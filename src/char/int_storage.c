@@ -1,33 +1,49 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
-#include "../config/core.h" // GP_BOUND_ITEMS
+#include "config/core.h" // GP_BOUND_ITEMS
 #include "int_storage.h"
+
+#include "char/char.h"
+#include "char/inter.h"
+#include "char/mapif.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h" // StringBuf
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "inter.h"
-#include "mapif.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/sql.h"
-#include "../common/strlib.h" // StringBuf
-
-#define STORAGE_MEMINC 16
 
 struct inter_storage_interface inter_storage_s;
+struct inter_storage_interface *inter_storage;
 
 /// Save storage data to sql
 int inter_storage_tosql(int account_id, struct storage_data* p)
 {
+	nullpo_ret(p);
 	chr->memitemdata_to_sql(p->items, MAX_STORAGE, account_id, TABLE_STORAGE);
 	return 0;
 }
@@ -40,6 +56,7 @@ int inter_storage_fromsql(int account_id, struct storage_data* p)
 	int i;
 	int j;
 
+	nullpo_ret(p);
 	memset(p, 0, sizeof(struct storage_data)); //clean up memory
 	p->storage_amount = 0;
 
@@ -80,8 +97,9 @@ int inter_storage_fromsql(int account_id, struct storage_data* p)
 }
 
 /// Save guild_storage data to sql
-int inter_storage_guild_storage_tosql(int guild_id, struct guild_storage* p)
+int inter_storage_guild_storage_tosql(int guild_id, const struct guild_storage *p)
 {
+	nullpo_ret(p);
 	chr->memitemdata_to_sql(p->items, MAX_GUILD_STORAGE, guild_id, TABLE_GUILD_STORAGE);
 	ShowInfo ("guild storage save to DB - guild: %d\n", guild_id);
 	return 0;
@@ -95,6 +113,7 @@ int inter_storage_guild_storage_fromsql(int guild_id, struct guild_storage* p)
 	int i;
 	int j;
 
+	nullpo_ret(p);
 	memset(p, 0, sizeof(struct guild_storage)); //clean up memory
 	p->storage_amount = 0;
 	p->guild_id = guild_id;
@@ -176,7 +195,7 @@ int mapif_load_guild_storage(int fd, int account_id, int guild_id, char flag)
 		WFIFOL(fd,4) = account_id;
 		WFIFOL(fd,8) = guild_id;
 		WFIFOB(fd,12) = flag; //1 open storage, 0 don't open
-		inter_storage->guild_storage_fromsql(guild_id, (struct guild_storage*)WFIFOP(fd,13));
+		inter_storage->guild_storage_fromsql(guild_id, WFIFOP(fd,13));
 		WFIFOSET(fd, WFIFOW(fd,2));
 		return 0;
 	}
@@ -228,7 +247,7 @@ int mapif_parse_SaveGuildStorage(int fd)
 		} else if(SQL->NumRows(inter->sql_handle) > 0) {
 			// guild exists
 			SQL->FreeResult(inter->sql_handle);
-			inter_storage->guild_storage_tosql(guild_id, (struct guild_storage*)RFIFOP(fd,12));
+			inter_storage->guild_storage_tosql(guild_id, RFIFOP(fd,12));
 			mapif->save_guild_storage_ack(fd, RFIFOL(fd,4), guild_id, 0);
 			return 0;
 		}
@@ -258,7 +277,7 @@ int mapif_parse_ItemBoundRetrieve_sub(int fd)
 {
 #ifdef GP_BOUND_ITEMS
 	StringBuf buf;
-	SqlStmt* stmt;
+	struct SqlStmt *stmt;
 	struct item item;
 	int j, i=0, s=0, bound_qt=0;
 	struct item items[MAX_INVENTORY];
@@ -297,7 +316,8 @@ int mapif_parse_ItemBoundRetrieve_sub(int fd)
 	for( j = 0; j < MAX_SLOTS; ++j )
 		SQL->StmtBindColumn(stmt, 10+j, SQLDT_SHORT, &item.card[j], 0, NULL, NULL);
 
-	while( SQL_SUCCESS == SQL->StmtNextRow(stmt) ) {
+	while( SQL_SUCCESS == SQL->StmtNextRow(stmt)) {
+		Assert_retb(i < MAX_INVENTORY);
 		memcpy(&items[i],&item,sizeof(struct item));
 		i++;
 	}
@@ -396,7 +416,7 @@ int mapif_parse_ItemBoundRetrieve_sub(int fd)
 		if( j )
 			StrBuf->AppendStr(&buf, ",");
 
-		StrBuf->Printf(&buf, "('%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%"PRIu64"'",
+		StrBuf->Printf(&buf, "('%d', '%d', '%d', '%u', '%d', '%d', '%d', '%u', '%d', '%"PRIu64"'",
 			guild_id, items[j].nameid, items[j].amount, items[j].equip, items[j].identify, items[j].refine,
 			items[j].attribute, items[j].expire_time, items[j].bound, items[j].unique_id);
 		for( s = 0; s < MAX_SLOTS; ++s )

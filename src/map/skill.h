@@ -1,23 +1,38 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef MAP_SKILL_H
 #define MAP_SKILL_H
 
-#include "../config/core.h" // RENEWAL_CAST
-
-#include "map.h" // struct block_list
-#include "status.h" // enum sc_type
-#include "../common/cbasetypes.h"
-#include "../common/db.h"
-#include "../common/mmo.h" // MAX_SKILL, struct square
+#include "map/map.h" // struct block_list
+#include "map/status.h" // enum sc_type
+#include "common/hercules.h"
+#include "common/db.h"
+#include "common/mmo.h" // MAX_SKILL, struct square
 
 /**
  * Declarations
  **/
 struct Damage;
 struct homun_data;
+struct itemlist; // map/itemdb.h
 struct map_session_data;
 struct mercenary_data;
 struct unit_data;
@@ -43,7 +58,7 @@ struct status_change_entry;
 #define MAX_SKILLUNITGROUP        25
 #define MAX_SKILL_ITEM_REQUIRE    10
 #define MAX_SKILLUNITGROUPTICKSET 25
-#define MAX_SKILL_NAME_LENGTH     30
+#define MAX_SKILL_NAME_LENGTH     32
 
 // (Epoque:) To-do: replace this macro with some sort of skill tree check (rather than hard-coded skill names)
 #define skill_ischangesex(id) ( \
@@ -76,6 +91,7 @@ enum e_skill_inf {
 enum e_skill_nk {
 	NK_NO_DAMAGE      = 0x01,
 	NK_SPLASH         = 0x02|0x04, // 0x4 = splash & split
+	NK_SPLASH_ONLY    = 0x02,
 	NK_SPLASHSPLIT    = 0x04,
 	NK_NO_CARDFIX_ATK = 0x08,
 	NK_NO_ELEFIX      = 0x10,
@@ -87,21 +103,23 @@ enum e_skill_nk {
 //A skill with 3 would be no damage + splash: area of effect.
 //Constants to identify a skill's inf2 value.
 enum e_skill_inf2 {
-	INF2_QUEST_SKILL    = 0x0001,
-	INF2_NPC_SKILL      = 0x0002, // NPC skills are those that players can't have in their skill tree.
-	INF2_WEDDING_SKILL  = 0x0004,
-	INF2_SPIRIT_SKILL   = 0x0008,
-	INF2_GUILD_SKILL    = 0x0010,
-	INF2_SONG_DANCE     = 0x0020,
-	INF2_ENSEMBLE_SKILL = 0x0040,
-	INF2_TRAP           = 0x0080,
-	INF2_TARGET_SELF    = 0x0100, // Refers to ground placed skills that will target the caster as well (like Grandcross)
-	INF2_NO_TARGET_SELF = 0x0200,
-	INF2_PARTY_ONLY     = 0x0400,
-	INF2_GUILD_ONLY     = 0x0800,
-	INF2_NO_ENEMY       = 0x1000,
-	INF2_NOLP           = 0x2000, // Spells that can ignore Land Protector
-	INF2_CHORUS_SKILL   = 0x4000, // Chorus skill
+	INF2_QUEST_SKILL       = 0x00001,
+	INF2_NPC_SKILL         = 0x00002, // NPC skills are those that players can't have in their skill tree.
+	INF2_WEDDING_SKILL     = 0x00004,
+	INF2_SPIRIT_SKILL      = 0x00008,
+	INF2_GUILD_SKILL       = 0x00010,
+	INF2_SONG_DANCE        = 0x00020,
+	INF2_ENSEMBLE_SKILL    = 0x00040,
+	INF2_TRAP              = 0x00080,
+	INF2_TARGET_SELF       = 0x00100, // Refers to ground placed skills that will target the caster as well (like Grandcross)
+	INF2_NO_TARGET_SELF    = 0x00200,
+	INF2_PARTY_ONLY        = 0x00400,
+	INF2_GUILD_ONLY        = 0x00800,
+	INF2_NO_ENEMY          = 0x01000,
+	INF2_NOLP              = 0x02000, // Spells that can ignore Land Protector
+	INF2_CHORUS_SKILL      = 0x04000, // Chorus skill
+	INF2_FREE_CAST_NORMAL  = 0x08000,
+	INF2_FREE_CAST_REDUCED = 0x10000,
 };
 
 
@@ -1714,9 +1732,12 @@ struct skill_unit_group {
 	char *valstr;
 	int unit_id;
 	int group_id;
-	int unit_count,alive_count;
+	int alive_count;
 	int item_id; //store item used.
-	struct skill_unit *unit;
+	struct {
+		int count;
+		struct skill_unit *data;
+	} unit;
 	struct {
 		unsigned ammo_consume : 1;
 		unsigned song_dance : 2; //0x1 Song/Dance, 0x2 Ensemble
@@ -1732,6 +1753,7 @@ struct skill_unit {
 	int limit;
 	int val1,val2;
 	short alive,range;
+	int prev;
 };
 
 struct skill_unit_group_tickset {
@@ -1813,27 +1835,8 @@ struct s_skill_spellbook_db {
 
 typedef int (*SkillFunc)(struct block_list *src, struct block_list *target, uint16 skill_id, uint16 skill_lv, int64 tick, int flag);
 
-/**
- * Skill.c Interface
- **/
-struct skill_interface {
-	int (*init) (bool minimal);
-	int (*final) (void);
-	void (*reload) (void);
-	void (*read_db) (bool minimal);
-	/* */
-	DBMap* cd_db; // char_id -> struct skill_cd
-	DBMap* name2id_db;
-	DBMap* unit_db; // int id -> struct skill_unit*
-	DBMap* usave_db; // char_id -> struct skill_unit_save
-	DBMap* group_db;// int group_id -> struct skill_unit_group*
-	DBMap* bowling_db;// int mob_id -> struct mob_data*s
-	/* */
-	struct eri *unit_ers; //For handling skill_unit's [Skotlex]
-	struct eri *timer_ers; //For handling skill_timerskills [Skotlex]
-	struct eri *cd_ers; // ERS Storage for skill cool down managers [Ind/Hercules]
-	struct eri *cd_entry_ers; // ERS Storage for skill cool down entries [Ind/Hercules]
-	/* */
+struct s_skill_dbs {
+BEGIN_ZEROED_BLOCK; // This block will be zeroed in skill_defaults() as well as skill_readdb()
 	struct s_skill_db db[MAX_SKILL_DB];
 	struct s_skill_produce_db produce_db[MAX_SKILL_PRODUCE_DB];
 	struct s_skill_arrow_db arrow_db[MAX_SKILL_ARROW_DB];
@@ -1843,7 +1846,32 @@ struct skill_interface {
 	struct s_skill_changematerial_db changematerial_db[MAX_SKILL_PRODUCE_DB];
 	struct s_skill_spellbook_db spellbook_db[MAX_SKILL_SPELLBOOK_DB];
 	bool reproduce_db[MAX_SKILL_DB];
+END_ZEROED_BLOCK;
 	struct s_skill_unit_layout unit_layout[MAX_SKILL_UNIT_LAYOUT];
+};
+
+/**
+ * Skill.c Interface
+ **/
+struct skill_interface {
+	int (*init) (bool minimal);
+	int (*final) (void);
+	void (*reload) (void);
+	void (*read_db) (bool minimal);
+	/* */
+	struct DBMap *cd_db; // char_id -> struct skill_cd
+	struct DBMap *name2id_db;
+	struct DBMap *unit_db; // int id -> struct skill_unit*
+	struct DBMap *usave_db; // char_id -> struct skill_unit_save
+	struct DBMap *group_db;// int group_id -> struct skill_unit_group*
+	struct DBMap *bowling_db;// int mob_id -> struct mob_data*s
+	/* */
+	struct eri *unit_ers; //For handling skill_unit's [Skotlex]
+	struct eri *timer_ers; //For handling skill_timerskills [Skotlex]
+	struct eri *cd_ers; // ERS Storage for skill cool down managers [Ind/Hercules]
+	struct eri *cd_entry_ers; // ERS Storage for skill cool down entries [Ind/Hercules]
+	/* */
+	struct s_skill_dbs *dbs;
 	/* */
 	int enchant_eff[5];
 	int deluge_eff[5];
@@ -1950,12 +1978,15 @@ struct skill_interface {
 	bool (*can_cloak) (struct map_session_data *sd);
 	int (*enchant_elemental_end) (struct block_list *bl, int type);
 	int (*not_ok) (uint16 skill_id, struct map_session_data *sd);
+	int (*not_ok_unknown) (uint16 skill_id, struct map_session_data *sd);
 	int (*not_ok_hom) (uint16 skill_id, struct homun_data *hd);
+	int (*not_ok_hom_unknown) (uint16 skill_id, struct homun_data *hd);
 	int (*not_ok_mercenary) (uint16 skill_id, struct mercenary_data *md);
 	int (*chastle_mob_changetarget) (struct block_list *bl,va_list ap);
 	int (*can_produce_mix) ( struct map_session_data *sd, int nameid, int trigger, int qty);
 	int (*produce_mix) ( struct map_session_data *sd, uint16 skill_id, int nameid, int slot1, int slot2, int slot3, int qty );
 	int (*arrow_create) ( struct map_session_data *sd,int nameid);
+	void (*castend_type) (int type, struct block_list *src, struct block_list *bl, uint16 skill_id, uint16 skill_lv, int64 tick, int flag);
 	int (*castend_nodamage_id) (struct block_list *src, struct block_list *bl, uint16 skill_id, uint16 skill_lv, int64 tick, int flag);
 	int (*castend_damage_id) (struct block_list* src, struct block_list *bl, uint16 skill_id, uint16 skill_lv, int64 tick,int flag);
 	int (*castend_pos2) (struct block_list *src, int x, int y, uint16 skill_id, uint16 skill_lv, int64 tick, int flag);
@@ -1998,6 +2029,7 @@ struct skill_interface {
 	int (*sit_out) (struct block_list *bl, va_list ap);
 	void (*unitsetmapcell) (struct skill_unit *src, uint16 skill_id, uint16 skill_lv, cell_t cell, bool flag);
 	int (*unit_onplace_timer) (struct skill_unit *src, struct block_list *bl, int64 tick);
+	void (*unit_onplace_timer_unknown) (struct skill_unit *src, struct block_list *bl, int64 *tick);
 	int (*unit_effect) (struct block_list* bl, va_list ap);
 	int (*unit_timer_sub_onplace) (struct block_list* bl, va_list ap);
 	int (*unit_move_sub) (struct block_list* bl, va_list ap);
@@ -2006,13 +2038,30 @@ struct skill_interface {
 	int (*blockmerc_end) (int tid, int64 tick, int id, intptr_t data);
 	int (*split_atoi) (char *str, int *val);
 	int (*unit_timer) (int tid, int64 tick, int id, intptr_t data);
-	int (*unit_timer_sub) (DBKey key, DBData *data, va_list ap);
+	int (*unit_timer_sub) (union DBKey key, struct DBData *data, va_list ap);
 	void (*init_unit_layout) (void);
-	bool (*parse_row_skilldb) (char* split[], int columns, int current);
-	bool (*parse_row_requiredb) (char* split[], int columns, int current);
-	bool (*parse_row_castdb) (char* split[], int columns, int current);
-	bool (*parse_row_castnodexdb) (char* split[], int columns, int current);
-	bool (*parse_row_unitdb) (char* split[], int columns, int current);
+	void (*init_unit_layout_unknown) (int skill_idx);
+	void (*validate_hittype) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_skilltype) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_attacktype) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_element) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_skillinfo) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_damagetype) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_castnodex) (struct config_setting_t *conf, struct s_skill_db *sk, bool delay);
+	void (*validate_weapontype) (struct config_setting_t *conf,  struct s_skill_db *sk);
+	void (*validate_ammotype) (struct config_setting_t *conf,  struct s_skill_db *sk);
+	void (*validate_state) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_item_requirements) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_unit_target) (struct config_setting_t *conf, struct s_skill_db *sk);
+	void (*validate_unit_flag) (struct config_setting_t *conf,  struct s_skill_db *sk);
+	void (*validate_additional_fields) (struct config_setting_t *conf, struct s_skill_db *sk);
+	bool (*validate_skilldb) (struct s_skill_db *skt, const char *source);
+	int (*validate_weapontype_sub) (const char *type, bool on, struct s_skill_db *sk);
+	int (*validate_ammotype_sub) (const char *type, bool on, struct s_skill_db *sk);
+	int (*validate_unit_flag_sub) (const char *type, bool on, struct s_skill_db *sk);
+	bool (*read_skilldb) (const char *filename);
+	void (*config_set_level) (struct config_setting_t *conf, int *arr);
+	void (*level_set_value) (int *arr, int value);
 	bool (*parse_row_producedb) (char* split[], int columns, int current);
 	bool (*parse_row_createarrowdb) (char* split[], int columns, int current);
 	bool (*parse_row_abradb) (char* split[], int columns, int current);
@@ -2036,8 +2085,8 @@ struct skill_interface {
 	int (*magicdecoy) (struct map_session_data *sd, int nameid);
 	int (*poisoningweapon) ( struct map_session_data *sd, int nameid);
 	int (*select_menu) (struct map_session_data *sd,uint16 skill_id);
-	int (*elementalanalysis) (struct map_session_data *sd, int n, uint16 skill_lv, unsigned short *item_list);
-	int (*changematerial) (struct map_session_data *sd, int n, unsigned short *item_list);
+	int (*elementalanalysis) (struct map_session_data *sd, uint16 skill_lv, const struct itemlist *item_list);
+	int (*changematerial) (struct map_session_data *sd, const struct itemlist *item_list);
 	int (*get_elemental_type) (uint16 skill_id, uint16 skill_lv);
 	void (*cooldown_save) (struct map_session_data * sd);
 	int (*get_new_group_id) (void);
@@ -2075,12 +2124,15 @@ struct skill_interface {
 	bool (*get_requirement_off_unknown) (struct status_change *sc, uint16 *skill_id);
 	bool (*get_requirement_item_unknown) (struct status_change *sc, struct map_session_data* sd, uint16 *skill_id, uint16 *skill_lv, uint16 *idx, int *i);
 	void (*get_requirement_unknown) (struct status_change *sc, struct map_session_data* sd, uint16 *skill_id, uint16 *skill_lv, struct skill_condition *req);
+	int (*splash_target) (struct block_list* bl);
+	int (*check_npc_chaospanic) (struct block_list *bl, va_list args);
+	int (*count_wos) (struct block_list *bl, va_list ap);
 };
-
-struct skill_interface *skill;
 
 #ifdef HERCULES_CORE
 void skill_defaults(void);
 #endif // HERCULES_CORE
+
+HPShared struct skill_interface *skill;
 
 #endif /* MAP_SKILL_H */

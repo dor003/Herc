@@ -1,65 +1,94 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2016  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "int_pet.h"
 
+#include "char/char.h"
+#include "char/inter.h"
+#include "char/mapif.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h"
+#include "common/utils.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "inter.h"
-#include "mapif.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/sql.h"
-#include "../common/strlib.h"
-#include "../common/utils.h"
 
 struct inter_pet_interface inter_pet_s;
+struct inter_pet_interface *inter_pet;
 
-//---------------------------------------------------------
-int inter_pet_tosql(int pet_id, struct s_pet* p)
+/**
+ * Saves a pet to the SQL database.
+ *
+ * @remark
+ *   In case of newly created pet, the pet ID is not updated to reflect the
+ *   newly assigned ID.  The caller must do so.
+ *
+ * @param p The pet data to save.
+ * @return The ID of the saved pet.
+ * @retval 0 in case of errors.
+ */
+int inter_pet_tosql(const struct s_pet *p)
 {
 	//`pet` (`pet_id`, `class`,`name`,`account_id`,`char_id`,`level`,`egg_id`,`equip`,`intimate`,`hungry`,`rename_flag`,`incubate`)
 	char esc_name[NAME_LENGTH*2+1];// escaped pet name
+	int pet_id = 0, hungry = 0, intimate = 0;
+
+	nullpo_ret(p);
 
 	SQL->EscapeStringLen(inter->sql_handle, esc_name, p->name, strnlen(p->name, NAME_LENGTH));
-	p->hungry = cap_value(p->hungry, 0, 100);
-	p->intimate = cap_value(p->intimate, 0, 1000);
+	hungry = cap_value(p->hungry, 0, 100);
+	intimate = cap_value(p->intimate, 0, 1000);
 
-	if( pet_id == -1 )
-	{// New pet.
-		if( SQL_ERROR == SQL->Query(inter->sql_handle, "INSERT INTO `%s` "
-			"(`class`,`name`,`account_id`,`char_id`,`level`,`egg_id`,`equip`,`intimate`,`hungry`,`rename_flag`,`incubate`) "
-			"VALUES ('%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d')",
-			pet_db, p->class_, esc_name, p->account_id, p->char_id, p->level, p->egg_id,
-			p->equip, p->intimate, p->hungry, p->rename_flag, p->incubate) )
-		{
+	if (p->pet_id == 0) {
+		// New pet.
+		if (SQL_ERROR == SQL->Query(inter->sql_handle, "INSERT INTO `%s` "
+				"(`class`,`name`,`account_id`,`char_id`,`level`,`egg_id`,`equip`,`intimate`,`hungry`,`rename_flag`,`incubate`) "
+				"VALUES ('%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d')",
+				pet_db, p->class_, esc_name, p->account_id, p->char_id, p->level, p->egg_id,
+				p->equip, intimate, hungry, p->rename_flag, p->incubate)) {
 			Sql_ShowDebug(inter->sql_handle);
 			return 0;
 		}
-		p->pet_id = (int)SQL->LastInsertId(inter->sql_handle);
-	}
-	else
-	{// Update pet.
-		if( SQL_ERROR == SQL->Query(inter->sql_handle, "UPDATE `%s` SET `class`='%d',`name`='%s',`account_id`='%d',`char_id`='%d',`level`='%d',`egg_id`='%d',`equip`='%d',`intimate`='%d',`hungry`='%d',`rename_flag`='%d',`incubate`='%d' WHERE `pet_id`='%d'",
-			pet_db, p->class_, esc_name, p->account_id, p->char_id, p->level, p->egg_id,
-			p->equip, p->intimate, p->hungry, p->rename_flag, p->incubate, p->pet_id) )
-		{
+		pet_id = (int)SQL->LastInsertId(inter->sql_handle);
+	} else {
+		// Update pet.
+		if (SQL_ERROR == SQL->Query(inter->sql_handle, "UPDATE `%s` SET `class`='%d',`name`='%s',`account_id`='%d',`char_id`='%d',`level`='%d',`egg_id`='%d',`equip`='%d',`intimate`='%d',`hungry`='%d',`rename_flag`='%d',`incubate`='%d' WHERE `pet_id`='%d'",
+				pet_db, p->class_, esc_name, p->account_id, p->char_id, p->level, p->egg_id,
+				p->equip, intimate, hungry, p->rename_flag, p->incubate, p->pet_id)) {
 			Sql_ShowDebug(inter->sql_handle);
 			return 0;
 		}
+		pet_id = p->pet_id;
 	}
 
-	if (save_log)
+	if (chr->show_save_log)
 		ShowInfo("Pet saved %d - %s.\n", pet_id, p->name);
-	return 1;
+
+	return pet_id;
 }
 
 int inter_pet_fromsql(int pet_id, struct s_pet* p)
@@ -70,6 +99,7 @@ int inter_pet_fromsql(int pet_id, struct s_pet* p)
 #ifdef NOISY
 	ShowInfo("Loading pet (%d)...\n",pet_id);
 #endif
+	nullpo_ret(p);
 	memset(p, 0, sizeof(struct s_pet));
 
 	//`pet` (`pet_id`, `class`,`name`,`account_id`,`char_id`,`level`,`egg_id`,`equip`,`intimate`,`hungry`,`rename_flag`,`incubate`)
@@ -100,7 +130,7 @@ int inter_pet_fromsql(int pet_id, struct s_pet* p)
 		p->hungry = cap_value(p->hungry, 0, 100);
 		p->intimate = cap_value(p->intimate, 0, 1000);
 
-		if( save_log )
+		if (chr->show_save_log)
 			ShowInfo("Pet loaded (%d - %s).\n", pet_id, p->name);
 	}
 	return 0;
@@ -145,6 +175,7 @@ int mapif_pet_created(int fd, int account_id, struct s_pet *p)
 
 int mapif_pet_info(int fd, int account_id, struct s_pet *p)
 {
+	nullpo_ret(p);
 	WFIFOHEAD(fd, sizeof(struct s_pet) + 9);
 	WFIFOW(fd, 0) =0x3881;
 	WFIFOW(fd, 2) =sizeof(struct s_pet) + 9;
@@ -191,8 +222,9 @@ int mapif_delete_pet_ack(int fd, int flag)
 }
 
 int mapif_create_pet(int fd, int account_id, int char_id, short pet_class, short pet_lv, short pet_egg_id,
-	short pet_equip, short intimate, short hungry, char rename_flag, char incubate, char *pet_name)
+	short pet_equip, short intimate, short hungry, char rename_flag, char incubate, const char *pet_name)
 {
+	nullpo_ret(pet_name);
 	memset(inter_pet->pt, 0, sizeof(struct s_pet));
 	safestrncpy(inter_pet->pt->name, pet_name, NAME_LENGTH);
 	if(incubate == 1)
@@ -219,8 +251,8 @@ int mapif_create_pet(int fd, int account_id, int char_id, short pet_class, short
 	else if(inter_pet->pt->intimate > 1000)
 		inter_pet->pt->intimate = 1000;
 
-	inter_pet->pt->pet_id = -1; //Signal NEW pet.
-	if (inter_pet->tosql(inter_pet->pt->pet_id,inter_pet->pt))
+	inter_pet->pt->pet_id = 0; //Signal NEW pet.
+	if ((inter_pet->pt->pet_id = inter_pet->tosql(inter_pet->pt)) != 0)
 		mapif->pet_created(fd, account_id, inter_pet->pt);
 	else //Failed...
 		mapif->pet_created(fd, account_id, NULL);
@@ -250,10 +282,11 @@ int mapif_load_pet(int fd, int account_id, int char_id, int pet_id)
 	return 0;
 }
 
-int mapif_save_pet(int fd, int account_id, struct s_pet *data)
+int mapif_save_pet(int fd, int account_id, const struct s_pet *data)
 {
 	//here process pet save request.
 	int len;
+	nullpo_ret(data);
 	RFIFOHEAD(fd);
 	len=RFIFOW(fd, 2);
 	if (sizeof(struct s_pet) != len-8) {
@@ -261,15 +294,7 @@ int mapif_save_pet(int fd, int account_id, struct s_pet *data)
 		return 0;
 	}
 
-	if (data->hungry < 0)
-		data->hungry = 0;
-	else if (data->hungry > 100)
-		data->hungry = 100;
-	if (data->intimate < 0)
-		data->intimate = 0;
-	else if (data->intimate > 1000)
-		data->intimate = 1000;
-	inter_pet->tosql(data->pet_id,data);
+	inter_pet->tosql(data);
 	mapif->save_pet_ack(fd, account_id, 0);
 
 	return 0;
@@ -286,7 +311,7 @@ int mapif_parse_CreatePet(int fd)
 {
 	RFIFOHEAD(fd);
 	mapif->create_pet(fd, RFIFOL(fd, 2), RFIFOL(fd, 6), RFIFOW(fd, 10), RFIFOW(fd, 12), RFIFOW(fd, 14), RFIFOW(fd, 16), RFIFOW(fd, 18),
-		RFIFOW(fd, 20), RFIFOB(fd, 22), RFIFOB(fd, 23), (char*)RFIFOP(fd, 24));
+		RFIFOW(fd, 20), RFIFOB(fd, 22), RFIFOB(fd, 23), RFIFOP(fd, 24));
 	return 0;
 }
 
@@ -300,7 +325,7 @@ int mapif_parse_LoadPet(int fd)
 int mapif_parse_SavePet(int fd)
 {
 	RFIFOHEAD(fd);
-	mapif->save_pet(fd, RFIFOL(fd, 4), (struct s_pet *) RFIFOP(fd, 8));
+	mapif->save_pet(fd, RFIFOL(fd, 4), RFIFOP(fd, 8));
 	return 0;
 }
 

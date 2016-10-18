@@ -1,29 +1,48 @@
-//===== Hercules Script ======================================
+//================= Hercules Script =======================================
+//=       _   _                     _
+//=      | | | |                   | |
+//=      | |_| | ___ _ __ ___ _   _| | ___  ___
+//=      |  _  |/ _ \ '__/ __| | | | |/ _ \/ __|
+//=      | | | |  __/ | | (__| |_| | |  __/\__ \
+//=      \_| |_/\___|_|  \___|\__,_|_|\___||___/
+//================= License ===============================================
+//= This file is part of Hercules.
+//= http://herc.ws - http://github.com/HerculesWS/Hercules
+//=
+//= Copyright (C) 2012-2015  Hercules Dev Team
+//= Copyright (C)  Euphy
+//= Copyright (C)  L0ne_W0lf
+//= Copyright (C)  SinSloth
+//= Copyright (C)  Lupus
+//= Copyright (C)  Jukka
+//=
+//= Hercules is free software: you can redistribute it and/or modify
+//= it under the terms of the GNU General Public License as published by
+//= the Free Software Foundation, either version 3 of the License, or
+//= (at your option) any later version.
+//=
+//= This program is distributed in the hope that it will be useful,
+//= but WITHOUT ANY WARRANTY; without even the implied warranty of
+//= MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//= GNU General Public License for more details.
+//=
+//= You should have received a copy of the GNU General Public License
+//= along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//=========================================================================
 //= Magician Class Tutorial and Job Specific Quest
-//===== By: ==================================================
-//= Fix up by Jukka
-//===== Current Version: =====================================
-//= 1.4
-//===== Description: =========================================
-//= [Official Conversion]
+//================= Description ===========================================
 //= Magician training quest.
-//===== Additional Comments: =================================
-//= 1.0 Fully working
-//= 1.1 Optimized [Lupus]
-//= 1.2 Fixed experience gains to match upcoming rate adjustments. [SinSloth]
-//= 1.3 Misc. updates. [L0ne_W0lf]
-//= 1.4 Updated to match the official script. [Euphy]
-//============================================================
+//================= Current Version =======================================
+//= 1.4
+//=========================================================================
 
-// Sign
-//============================================================
+//== Sign ==================================================
 geffen,61,174,4	script	Sign#M	HIDDEN_NPC,{
 	mes "- Mage Job Change -";
 	close;
 }
 
-// New Mage Manager
-//============================================================
+//== New Mage Manager ======================================
 geffen,67,180,4	script	New Mage Manager#M	8_F,{
 	mes "[Mana]";
 	if(Class == Job_Novice){
@@ -70,7 +89,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "you want to learn more on";
 		mes "the basics of the Mage job.";
 		next;
-		switch(select("Will you teach me?:Perhaps later...")) {
+		switch(select("Will you teach me?", "Perhaps later...")) {
 		case 1:
 			mes "[Mana]";
 			mes "Of course!";
@@ -132,7 +151,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "time for a break. But we'll";
 		mes "continue this later, okay?";
 		tu_magician01 = 1;
-		if (checkre(3))
+		if (RENEWAL_EXP)
 			getexp BaseLevel*3,BaseLevel*2;
 		else
 			getexp BaseLevel*30,BaseLevel*15;
@@ -364,7 +383,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 				mes "ready, we'll cover some new";
 				mes "material for you to learn.";
 				next;
-				if(select("W-wait, not yet!:I'm ready to go on.") == 2) {
+				if(select("W-wait, not yet!", "I'm ready to go on.") == 2) {
 					mes "[Mana]";
 					mes "Alrighty, we'll";
 					mes "move on to the next";
@@ -466,7 +485,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "all 10 Chrysalis from hunting";
 		mes "all of those Pupa. Hmmmm...";
 		next;
-		if (countitem(915) < 10) {
+		if (countitem(Chrysalis) < 10) {
 			mes "[Mana]";
 			mes "Aw, you don't";
 			mes "have enough of";
@@ -497,7 +516,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "like I asked? I hope so...";
 		mes "Because I'm going to check~";
 		next;
-		if(countitem(915) < 10){
+		if(countitem(Chrysalis) < 10){
 			mes "[Mana]";
 			mes "Whoa, you need";
 			mes "more than just this.";
@@ -525,7 +544,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "you like me to explain?";
 		next;
 		while(1){
-			switch(select("Soul Strike:Safety Wall:Fire Ball:Frost Diver:Thunderstorm:Fire Wall:Energy Coat:Quit.")) {
+			switch(select("Soul Strike", "Safety Wall", "Fire Ball", "Frost Diver", "Thunderstorm", "Fire Wall", "Energy Coat", "Quit.")) {
 			case 1:
 				mes "[Mana]";
 				mes "Soul Strike is a ^CFB53BGhost^000000";
@@ -650,7 +669,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 				next;
 				mes "[Mana]";
 				mes "So if you can use";
-				mes "Fire Well strategically";
+				mes "Fire Wall strategically";
 				mes "and effectively, it can";
 				mes "be a very powerful skill~";
 				.@skill_e6 = 1;
@@ -691,7 +710,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 				mes "training. I hope it comes";
 				mes "in handy when fighting...";
 				tu_magician01 = 6;
-				getitem 1604,1; //Wand
+				getitem Wand,1;
 				specialeffect2 EF_HIT5;
 				if(.@skill_e1) getexp 300,100;
 				if(.@skill_e2) getexp 300,100;
@@ -722,7 +741,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "give you some support.";
 		mes "So what do you think?";
 		next;
-		switch(select("I'll do it.:Sorry, but...")) {
+		switch(select("I'll do it.", "Sorry, but...")) {
 		case 1:
 			mes "[Mana]";
 			mes "Great! Alright,";
@@ -762,7 +781,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "a message, saying that";
 		mes "you've done a great job in";
 		mes "completing your mission.";
-		mes "Very nice work, "+PcName+"~";
+		mes "Very nice work, "+strcharinfo(PC_NAME)+"~";
 		next;
 		mes "[Mana]";
 		mes "It seems like there are";
@@ -785,7 +804,7 @@ geffen,67,180,4	script	New Mage Manager#M	8_F,{
 		mes "out both of our guilds. Once";
 		mes "again, thanks very much~";
 		tu_magician01 = 28;
-		getitem 2321,1; //Silk_Robe
+		getitem Silk_Robe,1;
 		Zeny += 3000;
 		getexp 3000,1000;
 		close;

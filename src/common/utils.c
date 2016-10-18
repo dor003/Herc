@@ -1,44 +1,61 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "utils.h"
 
-#include <math.h> // floor()
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h> // cache purposes [Ind/Hercules]
-
-#include "../common/cbasetypes.h"
-#include "../common/core.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/strlib.h"
+#include "common/cbasetypes.h"
+#include "common/core.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/strlib.h"
 
 #ifdef WIN32
-#	include "../common/winapi.h"
+#	include "common/winapi.h"
 #	ifndef F_OK
 #		define F_OK   0x0
 #	endif  /* F_OK */
 #else
 #	include <dirent.h>
-#	include <sys/stat.h>
 #	include <unistd.h>
 #endif
 
+#include <math.h> // floor()
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h> // cache purposes [Ind/Hercules]
+
 struct HCache_interface HCache_s;
+struct HCache_interface *HCache;
 
 /// Dumps given buffer into file pointed to by a handle.
 void WriteDump(FILE* fp, const void* buffer, size_t length)
 {
 	size_t i;
 	char hex[48+1], ascii[16+1];
+
+	nullpo_retv(fp);
+	nullpo_retv(buffer);
 
 	fprintf(fp, "--- 00-01-02-03-04-05-06-07-08-09-0A-0B-0C-0D-0E-0F   0123456789ABCDEF\n");
 	ascii[16] = 0;
@@ -63,12 +80,13 @@ void WriteDump(FILE* fp, const void* buffer, size_t length)
 	}
 }
 
-
 /// Dumps given buffer on the console.
-void ShowDump(const void *buffer, size_t length) {
+void ShowDump(const void *buffer, size_t length)
+{
 	size_t i;
 	char hex[48+1], ascii[16+1];
 
+	nullpo_retv(buffer);
 	ShowDebug("--- 00-01-02-03-04-05-06-07-08-09-0A-0B-0C-0D-0E-0F   0123456789ABCDEF\n");
 	ascii[16] = 0;
 
@@ -89,13 +107,13 @@ void ShowDump(const void *buffer, size_t length) {
 	}
 }
 
-
 #ifdef WIN32
 
 static char* checkpath(char *path, const char *srcpath)
 {
 	// just make sure the char*path is not const
 	char *p = path;
+
 	if (NULL == path || NULL == srcpath)
 		return path;
 	while(*srcpath) {
@@ -140,7 +158,6 @@ void findfile(const char *p, const char *pat, void (func)(const char*))
 				func( tmppath );
 			}
 
-
 			if( FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
 			{
 				findfile(tmppath, pat, func);
@@ -158,7 +175,7 @@ static char* checkpath(char *path, const char*srcpath)
 {
 	// just make sure the char*path is not const
 	char *p=path;
-	
+
 	if(NULL!=path && NULL!=srcpath) {
 		while(*srcpath) {
 			if (*srcpath=='\\') {
@@ -342,16 +359,59 @@ unsigned int get_percentage(const unsigned int A, const unsigned int B)
 	return (unsigned int)floor(result);
 }
 
+/**
+ * Applies a percentual rate modifier.
+ *
+ * @param value The base value.
+ * @param rate  The rate modifier to apply.
+ * @param stdrate The rate modifier's divider (rate == stdrate => 100%).
+ * @return The modified value.
+ */
+int64 apply_percentrate64(int64 value, int rate, int stdrate)
+{
+	Assert_ret(stdrate > 0);
+	Assert_ret(rate >= 0);
+	if (rate == stdrate)
+		return value;
+	if (rate == 0)
+		return 0;
+	if (INT64_MAX / rate < value) {
+		// Give up some precision to prevent overflows
+		return value / stdrate * rate;
+	}
+	return value * rate / stdrate;
+}
+
+/**
+ * Applies a percentual rate modifier.
+ *
+ * @param value The base value.
+ * @param rate  The rate modifier to apply. Must be <= maxrate.
+ * @param maxrate The rate modifier's divider (maxrate = 100%).
+ * @return The modified value.
+ */
+int apply_percentrate(int value, int rate, int maxrate)
+{
+	Assert_ret(maxrate > 0);
+	Assert_ret(rate >= 0);
+	if (rate == maxrate)
+		return value;
+	if (rate == 0)
+		return 0;
+	return (int)(value * (int64)rate / maxrate);
+}
+
 //-----------------------------------------------------
 // custom timestamp formatting (from eApp)
 //-----------------------------------------------------
 const char* timestamp2string(char* str, size_t size, time_t timestamp, const char* format)
 {
-	size_t len = strftime(str, size, format, localtime(&timestamp));
+	size_t len;
+	nullpo_retr(NULL, str);
+	len = strftime(str, size, format, localtime(&timestamp));
 	memset(str + len, '\0', size - len);
 	return str;
 }
-
 
 /* [Ind/Hercules] Caching */
 bool HCache_check(const char *file)
@@ -361,6 +421,7 @@ bool HCache_check(const char *file)
 	char s_path[255], dT[1];
 	time_t rtime;
 
+	nullpo_retr(false, file);
 	if (!(first = fopen(file,"rb")))
 		return false;
 
@@ -404,9 +465,13 @@ bool HCache_check(const char *file)
 	return true;
 }
 
-FILE *HCache_open(const char *file, const char *opt) {
+FILE *HCache_open(const char *file, const char *opt)
+{
 	FILE *first;
 	char s_path[255];
+
+	nullpo_retr(NULL, file);
+	nullpo_retr(NULL, opt);
 
 	if( file[0] == '.' && file[1] == '/' )
 		file += 2;
@@ -446,15 +511,19 @@ void HCache_init(void)
 }
 
 /* transit to fread, shields vs warn_unused_result */
-size_t hread(void * ptr, size_t size, size_t count, FILE * stream) {
+size_t hread(void *ptr, size_t size, size_t count, FILE *stream)
+{
 	return fread(ptr, size, count, stream);
 }
+
 /* transit to fwrite, shields vs warn_unused_result */
-size_t hwrite(const void * ptr, size_t size, size_t count, FILE * stream) {
+size_t hwrite(const void *ptr, size_t size, size_t count, FILE *stream)
+{
 	return fwrite(ptr, size, count, stream);
 }
 
-void HCache_defaults(void) {
+void HCache_defaults(void)
+{
 	HCache = &HCache_s;
 
 	HCache->init = HCache_init;

@@ -1,28 +1,44 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "int_quest.h"
 
+#include "char/char.h"
+#include "char/inter.h"
+#include "char/mapif.h"
+#include "common/cbasetypes.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "inter.h"
-#include "mapif.h"
-#include "../common/db.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/sql.h"
-#include "../common/strlib.h"
-#include "../common/timer.h"
 
 struct inter_quest_interface inter_quest_s;
+struct inter_quest_interface *inter_quest;
 
 /**
  * Loads the entire questlog for a character.
@@ -36,7 +52,7 @@ struct quest *mapif_quests_fromsql(int char_id, int *count)
 {
 	struct quest *questlog = NULL;
 	struct quest tmp_quest;
-	SqlStmt *stmt;
+	struct SqlStmt *stmt;
 	StringBuf buf;
 	int i;
 	int sqlerror = SQL_SUCCESS;
@@ -66,8 +82,9 @@ struct quest *mapif_quests_fromsql(int char_id, int *count)
 	 || SQL_ERROR == SQL->StmtBindColumn(stmt, 0, SQLDT_INT,  &tmp_quest.quest_id, 0, NULL, NULL)
 	 || SQL_ERROR == SQL->StmtBindColumn(stmt, 1, SQLDT_INT,  &tmp_quest.state,    0, NULL, NULL)
 	 || SQL_ERROR == SQL->StmtBindColumn(stmt, 2, SQLDT_UINT, &tmp_quest.time,     0, NULL, NULL)
-	)
+	) {
 		sqlerror = SQL_ERROR;
+	}
 
 	StrBuf->Destroy(&buf);
 
@@ -137,7 +154,7 @@ bool mapif_quest_add(int char_id, struct quest qd)
 	for (i = 0; i < MAX_QUEST_OBJECTIVES; i++) {
 		StrBuf->Printf(&buf, ", `count%d`", i+1);
 	}
-	StrBuf->Printf(&buf, ") VALUES ('%d', '%d', '%d', '%d'", qd.quest_id, char_id, qd.state, qd.time);
+	StrBuf->Printf(&buf, ") VALUES ('%d', '%d', '%u', '%u'", qd.quest_id, char_id, qd.state, qd.time);
 	for (i = 0; i < MAX_QUEST_OBJECTIVES; i++) {
 		StrBuf->Printf(&buf, ", '%d'", qd.count[i]);
 	}
@@ -165,7 +182,7 @@ bool mapif_quest_update(int char_id, struct quest qd)
 	int i;
 
 	StrBuf->Init(&buf);
-	StrBuf->Printf(&buf, "UPDATE `%s` SET `state`='%d'", quest_db, qd.state);
+	StrBuf->Printf(&buf, "UPDATE `%s` SET `state`='%u', `time`='%u'", quest_db, qd.state, qd.time);
 	for (i = 0; i < MAX_QUEST_OBJECTIVES; i++) {
 		StrBuf->Printf(&buf, ", `count%d`='%d'", i+1, qd.count[i]);
 	}
@@ -201,11 +218,12 @@ int mapif_parse_quest_save(int fd)
 {
 	int i, j, k, old_n, new_n = (RFIFOW(fd,2)-8)/sizeof(struct quest);
 	int char_id = RFIFOL(fd,4);
-	struct quest *old_qd = NULL, *new_qd = NULL;
+	struct quest *old_qd = NULL;
+	const struct quest *new_qd = NULL;
 	bool success = true;
 
 	if (new_n > 0)
-		new_qd = (struct quest*)RFIFOP(fd,8);
+		new_qd = RFIFOP(fd,8);
 
 	old_qd = mapif->quests_fromsql(char_id, &old_n);
 
@@ -249,8 +267,10 @@ void mapif_send_quests(int fd, int char_id, struct quest *tmp_questlog, int num_
 	WFIFOW(fd,2) = num_quests*sizeof(struct quest)+8;
 	WFIFOL(fd,4) = char_id;
 
-	if (num_quests > 0)
+	if (num_quests > 0) {
+		nullpo_retv(tmp_questlog);
 		memcpy(WFIFOP(fd,8), tmp_questlog, sizeof(struct quest)*num_quests);
+	}
 
 	WFIFOSET(fd,num_quests*sizeof(struct quest)+8);
 }
