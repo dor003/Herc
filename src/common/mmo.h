@@ -109,7 +109,10 @@
 #define MAX_FAME 1000000000
 #define MAX_CART 100
 #define MAX_SKILL 1478
-#define MAX_SKILL_ID 10015   // [Ind/Hercules] max used skill ID
+// Dess - Guild Reputation Skills
+#define MAX_SKILL_ID GD_MAX
+//#define MAX_SKILL_ID 10015   // [Ind/Hercules] max used skill ID
+//
 // Update this max as necessary. 86 is the value needed for Expanded Super Novice.
 #define MAX_SKILL_TREE 86
 #define DEFAULT_WALK_SPEED 150
@@ -122,7 +125,7 @@
 #define MAX_GUILDPOSITION 20    // Increased max guild positions to accommodate for all members [Valaris] (removed) [PoW]
 #define MAX_GUILDEXPULSION 32
 #define MAX_GUILDALLIANCE 16
-#define MAX_GUILDSKILL 15       // Increased max guild skills because of new skills [Sara-chan]
+#define MAX_GUILDSKILL 50       // Increased max guild skills because of new skills [Sara-chan]
 #define MAX_GUILDLEVEL 50
 #define MAX_GUARDIANS 8         // Local max per castle. [Skotlex]
 #define MAX_QUEST_OBJECTIVES 3  // Max quest objectives for a quest
@@ -188,6 +191,8 @@
 #define MAX_ELEMENTAL_CLASS 12
 #define EL_CLASS_BASE 2114
 #define EL_CLASS_MAX (EL_CLASS_BASE+MAX_ELEMENTAL_CLASS-1)
+
+#define WAR_LASTHIT_DELAY 15000 // Dess - Guild Wars
 
 struct HPluginData;
 
@@ -613,6 +618,8 @@ struct guild {
 	/* HPM Custom Struct */
 	struct HPluginData **hdata;
 	unsigned int hdatac;
+	
+	int rep; // Dess - Guild Reputation
 };
 
 struct guild_castle {
@@ -665,6 +672,7 @@ enum guild_basic_info {
 	 * All checks regarding max skill level should be done in _map-server_
 	 **/
 	GBI_SKILLLV,    ///< Guild skill_lv
+	GBI_REP, // Dess - Guild Reputation
 };
 
 enum { //Change Member Infos
@@ -694,6 +702,28 @@ enum {
 	GD_RESTORE=10012,
 	GD_EMERGENCYCALL=10013,
 	GD_DEVELOPMENT=10014,
+	// Dess - Guild Reputation Skills
+	GD_REPSKILLBASE=10030,
+	GD_REPRESISTANCE=10030,
+	GD_REPBODY=10031,
+	GD_REPSOUL=10032,
+	GD_REPDEFENSE=10033,
+	GD_REPMAGICPOWER=10034,
+	GD_REPPHYSICALPOWER=10035,
+	GD_REPSPEED=10036,
+	GD_REPREGENERATION=10037,
+	GD_REPMAGICDEFENSE=10038,
+	GD_REPCRITICAL=10039,
+	GD_REPEVASION=10040,
+	GD_REPSPIRITUALITY=10041,
+	GD_REPRANGEPROTECTION=10042,
+	GD_REPSANCTUARY=10043,
+	GD_REPRICH=10044,
+	GD_REPEXP=10045,
+	GD_REPHUMANPROTECTION=10046,
+	GD_REPPERFECTION=10047,
+	GD_REPREVIVE=10048,
+	//
 	GD_MAX,
 };
 

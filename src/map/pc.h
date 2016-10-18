@@ -188,6 +188,10 @@ struct map_session_data {
 		unsigned int itemcheck : 1;
 		unsigned int standalone : 1;/* [Ind/Hercules <3] */
 		unsigned int loggingout : 1;
+		
+		// Dess
+		unsigned int spec_mode : 2;
+		unsigned int hero : 1;
 	} state;
 	struct {
 		unsigned char no_weapon_damage, no_magic_damage, no_misc_damage;
@@ -559,6 +563,12 @@ struct map_session_data {
 	const char* delunit_prevfile;
 	int delunit_prevline;
 
+	// Dess - Olympiad
+	int olympiad_damage;
+	time_t hero_chat_timer;
+	//
+	
+	int64 war_lasthit_tick; // Dess - Guild Wars
 };
 
 #define EQP_WEAPON EQP_HAND_R
@@ -1035,6 +1045,9 @@ struct pc_interface {
 	void (*autotrade_start) (struct map_session_data *sd);
 	void (*autotrade_prepare) (struct map_session_data *sd);
 	void (*autotrade_populate) (struct map_session_data *sd);
+	
+	int (*check_ip_restriction) (struct map_session_data* sd); // Dess - IP Restriction
+	void (*spec_mode) (struct map_session_data* sd, int flag); // Dess - Spec Mode
 };
 
 struct pc_interface *pc;

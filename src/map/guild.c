@@ -817,6 +817,8 @@ int guild_leave(struct map_session_data* sd, int guild_id, int account_id, int c
 			&& !battle_config.guild_castle_expulsion)
 		)
 		return 0;
+		
+	status_calc_pc(sd,SCO_NONE); // Dess - Guild Reputation Skills
 
 	intif->guild_leave(sd->status.guild_id, sd->status.account_id, sd->status.char_id,0,mes);
 	return 0;
@@ -1317,6 +1319,11 @@ int guild_skillup(TBL_PC* sd, uint16 skill_id)
 			strcmp(sd->status.name, g->master) ) // not the guild master
 		return 0;
 
+	// Dess - Guild Reputation Skills
+	if (skill_id >= GD_REPSKILLBASE)
+		return 0;
+	//
+	
 	if( g->skill_point > 0 &&
 			g->skill[idx].id != 0 &&
 			g->skill[idx].lv < max )
@@ -1348,6 +1355,21 @@ int guild_skillupack(int guild_id,uint16 skill_id,int account_id) {
 		}
 	}
 
+	// Dess - Guild Reputation Skills
+	if (skill_id >= GD_REPSKILLBASE) {
+		int i;
+		char output[128];
+		
+		for (i = 0; i < g->max_member; i++) {
+			if ((sd = g->member[i].sd) != NULL) {
+				sprintf(output, "Your guild learned a new skill - %s, level %d.", guild->rep_skills_data[skill_id - GD_REPSKILLBASE]->name , g->skill[skill_id - GD_SKILLBASE].lv);
+				clif->colormes(sd->fd, COLOR_LIGHT_BLUE, output);
+				status_calc_pc(sd,SCO_NONE);
+			}
+		}
+	}
+	//
+	
 	// Inform all members
 	for(i=0;i<g->max_member;i++)
 		if((sd=g->member[i].sd)!=NULL)
@@ -1644,24 +1666,24 @@ int guild_allianceack(int guild_id1,int guild_id2,int account_id1,int account_id
 	}
 	
 	if (!(flag & 0x08)) { // new relationship
-		for(i=0;i<2-(flag&1);i++) {
+		for(i=0;i<2-(flag&2?0:flag&1);i++) { // Dess - Guild Wars
 			if(g[i]!=NULL) {
 				ARR_FIND( 0, MAX_GUILDALLIANCE, j, g[i]->alliance[j].guild_id == 0 );
 				if( j < MAX_GUILDALLIANCE ) {
 					g[i]->alliance[j].guild_id=guild_id[1-i];
 					memcpy(g[i]->alliance[j].name,guild_name[1-i],NAME_LENGTH);
-					g[i]->alliance[j].opposition=flag&1;
+					g[i]->alliance[j].opposition=flag&2?2:flag&1; // Dess - Guild Wars
 				}
 			}
 		}
 	} else { // remove relationship
-		for(i=0;i<2-(flag&1);i++) {
+		for(i=0;i<2-(flag&2?0:flag&1);i++) { // Dess - Guild Wars
 			if( g[i] != NULL ) {
-				ARR_FIND( 0, MAX_GUILDALLIANCE, j, g[i]->alliance[j].guild_id == guild_id[1-i] && g[i]->alliance[j].opposition == (flag&1) );
+				ARR_FIND( 0, MAX_GUILDALLIANCE, j, g[i]->alliance[j].guild_id == guild_id[1-i] && g[i]->alliance[j].opposition == (flag&2?2:flag&1) ); // Dess - Guild Wars
 				if( j < MAX_GUILDALLIANCE )
 					g[i]->alliance[j].guild_id = 0;
 			}
-			if (sd[i] != NULL) // notify players
+			if (!(flag&2) && sd[i] != NULL) // Dess - Guild Wars
 				clif->guild_delalliance(sd[i],guild_id[1-i],(flag&1));
 		}
 	}
@@ -1674,13 +1696,14 @@ int guild_allianceack(int guild_id1,int guild_id2,int account_id1,int account_id
 			clif->guild_oppositionack(sd[0],0);
 	}
 
-
-	for (i = 0; i < 2 - (flag & 1); i++) { // Retransmission of the relationship list to all members
-		if (g[i] != NULL) {
-			for (j = 0; j < g[i]->max_member; j++) {
-				struct map_session_data *msd = g[i]->member[j].sd;
-				if (msd != NULL)
-					clif->guild_allianceinfo(msd);
+	if (!(flag&2)) { // Dess - Guild Wars
+		for (i = 0; i < 2 - (flag & 1); i++) { // Retransmission of the relationship list to all members
+			if (g[i] != NULL) {
+				for (j = 0; j < g[i]->max_member; j++) {
+					struct map_session_data *msd = g[i]->member[j].sd;
+					if (msd != NULL)
+						clif->guild_allianceinfo(msd);
+				}
 			}
 		}
 	}
@@ -1761,6 +1784,8 @@ int guild_broken(int guild_id,int flag)
 			status_change_end(&sd->bl, SC_GLORYWOUNDS, INVALID_TIMER);
 			status_change_end(&sd->bl, SC_SOULCOLD, INVALID_TIMER);
 			status_change_end(&sd->bl, SC_HAWKEYES, INVALID_TIMER);
+
+			status_calc_pc(g->member[i].sd,SCO_NONE); // Dess - Guild Reputation Skills
 		}
 	}
 
@@ -1891,7 +1916,7 @@ int guild_break(struct map_session_data *sd,char *name) {
 		clif->guild_broken(sd,2);
 		return 0;
 	}
-	
+
 	/* regardless of char server allowing it, we clear the guild master's auras */
 	if( (ud = unit->bl2ud(&sd->bl)) ) {
 		int count = 0;
@@ -2241,6 +2266,303 @@ void guild_flags_clear(void) {
 	guild->flags_count = 0;
 }
 
+// Dess - Guild Wars
+void guild_colormes(struct guild *g, enum clif_colors color, const char* msg) {
+	struct map_session_data *sd;
+	int i;
+
+	if (!g || !msg)
+		return;
+
+	for (i = 0; i < g->max_member; i++) {
+		if ((sd = g->member[i].sd) != NULL) {
+			clif->colormes(sd->fd, color, msg);
+		}
+	}
+}
+
+// Guild Reputation
+void guild_add_rep(struct guild *g, int amount) {
+	char message[CHAT_SIZE_MAX];
+
+	if (!g || amount == 0)
+		return;
+
+	if (g->rep + amount < 0) {
+		if (g->rep == 0)
+			return;
+		else
+			amount = -g->rep;
+	}
+
+	intif->guild_change_basicinfo(g->guild_id, GBI_REP, &amount, sizeof(amount));
+	
+	if (amount < 0) {
+		snprintf(message, CHAT_SIZE_MAX, "You guild lost %d point(s) of reputation. [%d now]", abs(amount), g->rep + amount);
+		guild->colormes(g, COLOR_LIGHT_RED, message);
+	}
+	else {
+		snprintf(message, CHAT_SIZE_MAX, "You guild gained %d point(s) of reputation. [%d now]", amount, g->rep + amount);
+		guild->colormes(g, COLOR_LIGHT_BLUE, message);
+	}
+}
+
+/*
+	return:
+		0: Success
+		1: Guild not found or all members of this guild is offline
+		2: You can't start a war with your own guild
+		3: You can't start a war during woe
+		4: You already are at war with this guild
+		5: You have too many alliances
+		6: You can't declare war on this guild right now
+*/
+int guild_start_war(struct map_session_data *sd, int guild_id) {
+	struct guild *g, *tg;
+	int end_time, i, c = 0;
+	char* data;
+
+	if (!sd || !(g = sd->guild))
+		return -1;
+	
+	if (!(tg = guild->search(guild_id)))
+		return 1;
+
+	if (g->guild_id == tg->guild_id)
+		return 2;
+		
+	if (map->agit_flag || map->agit2_flag)
+		return 3;
+
+	for (i = 0; i < MAX_GUILDALLIANCE; i++) {
+		if (g->alliance[i].guild_id > 0)
+			c++;
+		
+		if (g->alliance[i].guild_id == tg->guild_id) {
+			if (g->alliance[i].opposition == 2)
+				return 4;
+
+			intif->guild_alliance(g->guild_id, tg->guild_id, sd->status.account_id, 0, 8);
+		}
+	}
+	
+	if (c >= MAX_GUILDALLIANCE)
+		return 5;
+
+	if (SQL_ERROR == SQL->Query(map->mysql_handle, "SELECT `end_time` FROM `guild_wars` WHERE `guild_id` = %d AND `guild_id2` = %d", g->guild_id, tg->guild_id)) {
+		Sql_ShowDebug(map->mysql_handle);
+		return -1;
+	}
+	
+	if (SQL_SUCCESS == SQL->NextRow(map->mysql_handle)) {
+		SQL->GetData(map->mysql_handle, 0, &data, NULL);
+		end_time = atoi(data);
+		SQL->FreeResult(map->mysql_handle);
+		
+		if (time(NULL) < (end_time + 604800))
+			return 6;
+	}
+
+	intif->guild_alliance(sd->status.guild_id, tg->guild_id, sd->status.account_id, 0, 2);
+	
+	return 0;
+}
+
+void guild_stop_war(struct map_session_data *sd,int guild_id) {
+	struct guild *g;
+	int i;
+
+	if (!sd || !sd->guild || !(g = sd->guild))
+		return;
+	
+	ARR_FIND(0, MAX_GUILDALLIANCE, i, g->alliance[i].guild_id == guild_id && g->alliance[i].opposition == 2);
+
+	if (i < MAX_GUILDALLIANCE) {
+		intif->guild_alliance(sd->status.guild_id, guild_id, sd->status.account_id, 0, 2|8);
+		guild->add_rep(g, -500);
+	}
+	
+	if (SQL_ERROR == SQL->Query(map->mysql_handle, "REPLACE INTO `guild_wars` VALUES (%d, %d, %d)", guild_id, g->guild_id, (int)time(NULL)))
+		Sql_ShowDebug(map->mysql_handle);
+}
+
+bool guild_check_war(int guild_id, int guild_id2) {
+	struct guild *g, *g2;
+	int i;
+	
+	if (!(g = guild->search(guild_id)) || !(g2 = guild->search(guild_id2)))
+		return false;
+	
+	ARR_FIND(0, MAX_GUILDALLIANCE, i, g->alliance[i].guild_id == g2->guild_id && g->alliance[i].opposition == 2);
+
+	if (i < MAX_GUILDALLIANCE)
+		return true;
+	
+	ARR_FIND(0, MAX_GUILDALLIANCE, i, g2->alliance[i].guild_id == g->guild_id && g2->alliance[i].opposition == 2);
+
+	if (i < MAX_GUILDALLIANCE)
+		return true;
+	
+	return false;
+}
+//
+
+// Dess - Guild Reputation Skills
+void guild_repskilldb_clear(void) {
+	int i, j;
+
+	for (i = 0; i < GD_MAX - GD_REPSKILLBASE; i++) {
+		if (guild->rep_skills_data[i]) {
+			for (j = 0; j < MAX_SKILL_LEVEL; j++) {
+				if (guild->rep_skills_data[i]->level_data[j].script)
+					script->free_code(guild->rep_skills_data[i]->level_data[j].script);	
+			}
+
+			aFree(guild->rep_skills_data[i]);
+			guild->rep_skills_data[i] = NULL;
+		}
+	}
+}
+
+struct guild_rep_skills_db *guild_read_repskilldb_sub(config_setting_t *cs, int n, const char *source)
+{
+	/*
+	 * Id: Skill ID						[int]
+	 * Name: Skill Name					[string]
+	 * Levels: (
+	 *     {
+	 *			Level:					[int]
+	 *			Description:			[string]
+	 *			Script: <"
+	 * 			    Script
+	 *				(it can be multi-line)
+	 * 			">
+	 *     },
+	 *     ... (can repeated up to MAX_REP_SKILL_LEVEL times)
+	 * )
+	 */
+	 
+	struct guild_rep_skills_db *entry = NULL;
+	config_setting_t *t = NULL;
+	int skill_id;
+	const char *str = NULL;
+	const char *desc = NULL;
+	 
+	if (!libconfig->setting_lookup_int(cs, "Id", &skill_id)) {
+		ShowWarning("guild_read_repskilldb: Missing id in \"%s\", entry #%d, skipping.\n", source, n);
+		return NULL;
+	}
+	if (skill_id < GD_REPSKILLBASE || skill_id > GD_MAX) {
+		ShowWarning("guild_read_repskilldb: Invalid Skill ID '%d' in \"%s\" (min: %d, max: %d), skipping.\n", skill_id, source, GD_REPSKILLBASE, GD_MAX);
+		return NULL;
+	}
+
+	if (!libconfig->setting_lookup_string(cs, "Name", &str) || !*str) {
+		ShowWarning("guild_read_repskilldb_sub: Missing Name in skill %d of \"%s\", skipping.\n", skill_id, source);
+		return NULL;
+	}
+	
+	if (!guild->skill_tree[skill_id - GD_SKILLBASE].id) {
+		ShowWarning("guild_read_repskilldb_sub: Skill ID %d not found in guild skill tree.\n", skill_id);
+		return NULL;
+	}
+
+	CREATE(entry, struct guild_rep_skills_db, 1);
+	entry->id = skill_id;
+	safestrncpy(entry->name, str, sizeof(entry->name));
+
+	if ((t=libconfig->setting_get_member(cs, "Levels")) && config_setting_is_list(t)) {
+		int i, len = libconfig->setting_length(t);
+		int levels_count = 0;
+		
+		for (i = 0; i < len && levels_count < MAX_SKILL_LEVEL; i++) {
+			config_setting_t *tt = libconfig->setting_get_elem(t, i);
+			int level = 0;
+			
+			if (!tt)
+				break;
+				
+			if (!config_setting_is_group(tt))
+				continue;
+				
+			if (!libconfig->setting_lookup_int(tt, "Level", &level) || level <= 0)
+				continue;
+				
+			if (!libconfig->setting_lookup_string(tt, "Description", &desc) || !*desc) {
+				ShowWarning("guild_read_repskilldb_sub: Missing Description in skill %d level %d of \"%s\", skipping.\n", skill_id, level, source);
+				continue;
+			}
+				
+			levels_count++;
+			
+			entry->level_data[level - 1].lv = level;
+			safestrncpy(entry->level_data[level - 1].description, desc, sizeof(entry->level_data[level - 1].description));
+				
+			if (!libconfig->setting_lookup_string(tt, "Script", &str))
+				continue;
+		
+			entry->level_data[level - 1].script = *str ? script->parse(str, source, 0, SCRIPT_IGNORE_EXTERNAL_BRACKETS, NULL) : NULL;
+		}
+	}
+
+	return entry;
+}
+
+void guild_read_repskilldb(void)
+{
+	char filepath[256];
+	config_t guild_rep_skills_conf;
+	config_setting_t *grepskillsdb = NULL, *s = NULL;
+	int i = 0, j = 0, count = 0;
+	const char *filename = "dess/guild_rep_skills.conf";
+
+	sprintf(filepath, "%s/%s", map->db_path, filename);
+	if (libconfig->read_file(&guild_rep_skills_conf, filepath) || !(grepskillsdb = libconfig->setting_get_member(guild_rep_skills_conf.root, "guild_rep_skills_db"))) {
+		ShowError("can't read %s\n", filepath);
+		return;
+	}
+
+	while ((s = libconfig->setting_get_elem(grepskillsdb, i++))) {
+		struct guild_rep_skills_db *entry = guild->read_repskilldb_sub(s, i-1, filepath);
+		
+		if (!entry)
+			continue;
+
+		if (guild->rep_skills_data[entry->id] != NULL) {
+			ShowWarning("guild_read_repskilldb: Duplicate skill_id %d.\n", entry->id);
+			
+			for (j = 0; j < MAX_SKILL_LEVEL; j++) {
+				if (guild->rep_skills_data[entry->id]->level_data[j].script)
+					script->free_code(guild->rep_skills_data[entry->id]->level_data[j].script);	
+			}
+	
+			aFree(guild->rep_skills_data[entry->id]);
+		}
+		guild->rep_skills_data[entry->id - GD_REPSKILLBASE] = entry;
+
+		count++;
+	}
+	ShowStatus("Done reading '"CL_WHITE"%d"CL_RESET"' entries in '"CL_WHITE"%s"CL_RESET"'.\n", count, filename);
+}
+
+void guild_calc_repskills(struct map_session_data *sd) {
+	struct guild *g;
+	int skill_id, skill_lv;
+
+	if (!sd || !(g = sd->guild))
+		return;
+
+	for (skill_id = GD_REPSKILLBASE; skill_id < GD_MAX; skill_id++) {
+		skill_lv = guild->checkskill(g, skill_id);
+		
+		if (skill_lv > 0 && guild->rep_skills_data[skill_id - GD_REPSKILLBASE])
+			script->run(guild->rep_skills_data[skill_id - GD_REPSKILLBASE]->level_data[skill_lv - 1].script, 0, sd->bl.id, npc->fake_nd->bl.id);
+	}
+
+	clif->updatestatus(sd, SP_STR);
+}
+//
+
 void do_init_guild(bool minimal) {
 	if (minimal)
 		return;
@@ -2254,6 +2576,8 @@ void do_init_guild(bool minimal) {
 	sv->readdb(map->db_path, "castle_db.txt", ',', 4, 5, -1, guild->read_castledb);
 
 	sv->readdb(map->db_path, "guild_skill_tree.txt", ',', 2+MAX_GUILD_SKILL_REQUIRE*2, 2+MAX_GUILD_SKILL_REQUIRE*2, -1, guild->read_guildskill_tree_db); //guild skill tree [Komurka]
+
+	guild->read_repskilldb(); // Dess - Guild Reputation Skills
 
 	timer->add_func_list(guild->payexp_timer,"guild_payexp_timer");
 	timer->add_func_list(guild->send_xy_timer, "guild_send_xy_timer");
@@ -2295,6 +2619,8 @@ void do_final_guild(void) {
 		
 	if( guild->flags )
 		aFree(guild->flags);
+
+	guild->repskilldb_clear(); // Dess - Guild Reputation Skills
 }
 void guild_defaults(void) {
 	guild = &guild_s;
@@ -2410,4 +2736,21 @@ void guild_defaults(void) {
 	guild->castle_reconnect_sub = guild_castle_reconnect_sub;
 	/* */
 	guild->retrieveitembound = guild_retrieveitembound;
+	
+	// Dess
+	guild->colormes = guild_colormes;
+	
+	// Dess - Guild Reputation
+	guild->add_rep = guild_add_rep;
+	
+	// Dess - Guild Wars
+	guild->start_war = guild_start_war;
+	guild->stop_war = guild_stop_war;
+	guild->check_war = guild_check_war;
+	
+	// Dess - Guild Reputation Skills
+	guild->repskilldb_clear = guild_repskilldb_clear; 
+	guild->read_repskilldb = guild_read_repskilldb; 
+	guild->read_repskilldb_sub = guild_read_repskilldb_sub; 
+	guild->calc_repskills = guild_calc_repskills; 
 }

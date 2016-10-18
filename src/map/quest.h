@@ -9,7 +9,7 @@
 #include "../common/cbasetypes.h"
 #include "../common/conf.h"
 
-#define MAX_QUEST_DB (60355+1) // Highest quest ID + 1
+#define MAX_QUEST_DB (60555+1) // Dess
 
 struct quest_dropitem {
 	int mob_id;

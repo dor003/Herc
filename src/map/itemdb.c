@@ -2042,6 +2042,7 @@ void itemdb_read(bool minimal) {
 		const char* filename[] = {
 			DBPATH"item_db.conf",
 			"item_db2.conf",
+			"dess/item_db3.conf", // Dess
 		};
 
 		for(i = 0; i < ARRAYLENGTH(filename); i++)

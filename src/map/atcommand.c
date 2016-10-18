@@ -9391,6 +9391,61 @@ ACMD(lang) {
 	
 	return true;
 }
+
+// Dess - Olympiad
+ACMD(herovoice) {
+	nullpo_retr(-1, sd);
+	
+	if (!sd->state.hero) {
+		clif->messages(fd, "Only Hero of Grand Olympiad can use this command.");
+		return false;
+	}
+		
+	if (!message || !*message)
+		return false;
+		
+	if (sd->hero_chat_timer && DIFF_TICK(timer->gettick(), sd->hero_chat_timer) < 10) {
+		clif->messages(fd, "You can use this chat only once per 10 sec.");
+		return false;
+	}
+	
+	memset(atcmd_output, '\0', sizeof(atcmd_output));
+
+	sprintf(atcmd_output, "Hero %s: %s", sd->status.name, message);
+	intif->broadcast2(atcmd_output, strlen(atcmd_output) + 1, 0x0099FF, 0x190, 12, 0, 0);
+	sd->hero_chat_timer = timer->gettick();
+	
+	return true;
+}
+
+// Dess - Guild Reputation
+ACMD(addguildrep) {
+	struct guild *g;
+	char guild_name[100];
+	int amount = 0;
+
+	if (!message || !*message || (sscanf(message, "\"%99[^\"]\" %d", guild_name, &amount) < 1 && sscanf(message, "%99s %d", guild_name, &amount) < 2)) {
+		clif->message(fd, "Usage: @addguildrep <guild name> <amount>");
+		return false;
+	}
+								  
+	if (!(g = guild->searchname(guild_name))) {
+		clif->message(fd, "Guild not found.");
+		return false;
+	}
+	
+	if (!amount) {
+		clif->message(fd, "Incorrect amount of reputation.");
+		return false;
+	}
+
+	guild->add_rep(g, amount);
+	sprintf(atcmd_output, "Added %d reputation to guild %s.", amount, guild_name);
+	clif->colormes(fd, COLOR_LIGHT_BLUE, atcmd_output);
+
+	return true;
+}
+
 /**
  * Fills the reference of available commands in atcommand DBMap
  **/
@@ -9662,6 +9717,8 @@ void atcommand_basecommands(void) {
 		ACMD_DEF(skdebug),
 		ACMD_DEF(cddebug),
 		ACMD_DEF(lang),
+		ACMD_DEF(herovoice), // Dess - Olympiad
+		ACMD_DEF(addguildrep), // Dess - Guild Reputation
 	};
 	int i;
 

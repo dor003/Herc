@@ -32,6 +32,7 @@
 
 // LSB = 0 => Alliance, LSB = 1 => Opposition
 #define GUILD_ALLIANCE_TYPE_MASK 0x01
+#define GUILD_WAR_TYPE_MASK 0x02 // Dess - Guild Wars
 #define GUILD_ALLIANCE_REMOVE 0x08
 
 struct inter_guild_interface inter_guild_s;
@@ -321,6 +322,14 @@ int inter_guild_tosql(struct guild *g,int flag)
 		}
 	}
 
+	// Dess - Guild Reputation
+	if (flag&GS_REP) {
+		strcat(t_info, " reputation");
+		if (SQL_ERROR == SQL->Query(inter->sql_handle, "UPDATE `%s` SET `rep` = '%d' WHERE `guild_id` = '%d'", guild_db, g->rep, g->guild_id))
+			Sql_ShowDebug(inter->sql_handle);
+	}
+	//
+	
 	if (save_log)
 		ShowInfo("Saved guild (%d - %s):%s\n",g->guild_id,g->name,t_info);
 	return 1;
@@ -504,6 +513,19 @@ struct guild * inter_guild_fromsql(int guild_id)
 			continue;// invalid guild skill
 		SQL->GetData(inter->sql_handle, 1, &data, NULL); g->skill[id].lv = atoi(data);
 	}
+	
+	// Dess - Guild Reputation
+	if (SQL_ERROR == SQL->Query(inter->sql_handle, "SELECT `rep` FROM `%s` WHERE `guild_id` = '%d'", guild_db, guild_id)) {
+		Sql_ShowDebug(inter->sql_handle);
+		return NULL;
+	}
+
+	if (SQL_SUCCESS != SQL->NextRow(inter->sql_handle))
+		return NULL;
+
+	SQL->GetData(inter->sql_handle, 0, &data, &len); g->rep = atoi(data);
+	//
+
 	SQL->FreeResult(inter->sql_handle);
 
 	idb_put(inter_guild->guild_db, guild_id, g); //Add to cache
@@ -1420,7 +1442,7 @@ int mapif_parse_GuildMessage(int fd, int guild_id, int account_id, char *mes, in
 int mapif_parse_GuildBasicInfoChange(int fd, int guild_id, int type, const void *data, int len) {
 	struct guild *g;
 	struct guild_skill gd_skill;
-	short value;
+	int value;	// Dess - Guild Reputation
 	g = inter_guild->fromsql(guild_id);
 
 	if( g == NULL )
@@ -1460,6 +1482,15 @@ int mapif_parse_GuildBasicInfoChange(int fd, int guild_id, int type, const void 
 			mapif->guild_skillupack(g->guild_id, gd_skill.id, 0);
 			break;
 
+		// Dess - Guild Reputation
+		case GBI_REP:
+			value = *((const int32 *)data);
+			g->rep += value;
+			mapif->guild_info(-1,g);
+			g->save_flag |= GS_REP;
+			break;
+		//
+			
 		default:
 			ShowError("int_guild: GuildBasicInfoChange: Unknown type %d, see mmo.h::guild_basic_info for more information\n",type);
 			return 0;
@@ -1693,21 +1724,21 @@ int mapif_parse_GuildAlliance(int fd, int guild_id1, int guild_id2, int account_
 
 	if( flag&GUILD_ALLIANCE_REMOVE ) {
 		// Remove alliance/opposition, in case of alliance, remove on both side
-		for( i = 0; i < ((flag&GUILD_ALLIANCE_TYPE_MASK) ? 1 : 2); i++ ) {
-			ARR_FIND( 0, MAX_GUILDALLIANCE, j, g[i]->alliance[j].guild_id == g[1-i]->guild_id && g[i]->alliance[j].opposition == (flag&GUILD_ALLIANCE_TYPE_MASK) );
+		for (i = 0; i < 2 - (flag&GUILD_WAR_TYPE_MASK ? 0 : flag&GUILD_ALLIANCE_TYPE_MASK); i++) { // Dess - Guild Wars
+			ARR_FIND( 0, MAX_GUILDALLIANCE, j, g[i]->alliance[j].guild_id == g[1-i]->guild_id && g[i]->alliance[j].opposition == (flag&GUILD_WAR_TYPE_MASK ? 2 : flag&GUILD_ALLIANCE_TYPE_MASK) ); // Dess - Guild Wars
 			if( j < MAX_GUILDALLIANCE )
 				g[i]->alliance[j].guild_id = 0;
 		}
 	} else {
 		// Add alliance, in case of alliance, add on both side
-		for( i = 0; i < ((flag&GUILD_ALLIANCE_TYPE_MASK) ? 1 : 2); i++ ) {
+		for (i = 0; i < 2 - (flag&GUILD_WAR_TYPE_MASK ? 0 : flag&GUILD_ALLIANCE_TYPE_MASK); i++) { // Dess - Guild Wars
 			// Search an empty slot
 			ARR_FIND( 0, MAX_GUILDALLIANCE, j, g[i]->alliance[j].guild_id == 0 );
 			if( j < MAX_GUILDALLIANCE ) {
 				g[i]->alliance[j].guild_id=g[1-i]->guild_id;
 				memcpy(g[i]->alliance[j].name,g[1-i]->name,NAME_LENGTH);
 				// Set alliance type
-				g[i]->alliance[j].opposition = flag&GUILD_ALLIANCE_TYPE_MASK;
+				g[i]->alliance[j].opposition = flag&GUILD_WAR_TYPE_MASK ? 2 : flag&GUILD_ALLIANCE_TYPE_MASK; // Dess - Guild Wars
 			}
 		}
 	}

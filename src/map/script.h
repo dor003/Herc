@@ -318,6 +318,7 @@ enum {
 	MF_BATTLEGROUND,
 	MF_RESET,
 	MF_NOTOMB,
+	MF_NOGUILDWAR, // Dess - Guild Wars
 	MF_NOCASHSHOP
 };
 

@@ -4061,6 +4061,10 @@ const char* npc_parse_mapflag(char* w1, char* w2, char* w3, char* w4, const char
 		map->list[m].flag.src4instance = (state) ? 1 : 0;
 	} else if ( !strcmpi(w3,"nocashshop") ) {
 		map->list[m].flag.nocashshop = (state) ? 1 : 0;
+	} else if ( !strcmpi(w3,"noguildwar") ) {
+		map->list[m].flag.noguildwar = state; // Dess - Guild Wars
+	} else if ( !strcmpi(w3,"ip_restriction") ) { // Dess - IP Restriction
+		map->list[m].ip_restriction = (state) ? atoi(w4) : 0; 
 	} else {
 		npc->parse_unknown_mapflag(mapname, w3, w4, start, buffer, filepath, retval);
 	}

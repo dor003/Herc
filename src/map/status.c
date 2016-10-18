@@ -1287,6 +1287,12 @@ int status_damage(struct block_list *src,struct block_list *target,int64 in_hp, 
 			flag = 0;
 			break;
 	}
+	
+	// Dess - Olympiad
+	if (map_olympiad(target->m)) {
+		st->hp = 1;
+		return (int)(hp+sp);
+	}
 
 	if(!flag) //Death canceled.
 		return (int)(hp+sp);
@@ -2158,6 +2164,9 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 	if (++calculating > 10) //Too many recursive calls!
 		return -1;
 
+	// Dess - Olympiad
+	sd->state.hero = pc_readglobalreg(sd, script->add_str("hero")) ? 1 : 0;
+	
 	// remember player-specific values that are currently being shown to the client (for refresh purposes)
 	memcpy(b_skill, &sd->status.skill, sizeof(b_skill));
 	b_weight = sd->weight;
@@ -2309,7 +2318,7 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 	pc->delautobonus(sd,sd->autobonus,ARRAYLENGTH(sd->autobonus),true);
 	pc->delautobonus(sd,sd->autobonus2,ARRAYLENGTH(sd->autobonus2),true);
 	pc->delautobonus(sd,sd->autobonus3,ARRAYLENGTH(sd->autobonus3),true);
-
+	
 	// Parse equipment.
 	for(i=0;i<EQI_MAX;i++) {
 		status->current_equip_item_index = index = sd->equip_index[i]; //We pass INDEX to status->current_equip_item_index - for EQUIP_SCRIPT (new cards solution) [Lupus]
@@ -2431,7 +2440,11 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 				return 1;
 		}
 	}
-
+	
+	// Dess - Guild Reputation Skills
+	if (sd->guild)
+		guild->calc_repskills(sd);
+	
 	/* we've got combos to process */
 	for( i = 0; i < sd->combo_count; i++ ) {
 		struct item_combo *combo = itemdb->id2combo(sd->combos[i].id);
@@ -2564,8 +2577,14 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 		sd->left_weapon.atkmods[1] = sd->left_weapon.atkmods[2];
 	}
 
+	// Dess - Olympiad (Бонусы хиро)
+	if (sd->state.hero && !map_olympiad(sd->bl.m)) {
+		sd->right_weapon.addrace[RC_DEMIHUMAN] += 15;
+		sd->left_weapon.addrace[RC_DEMIHUMAN] += 15;
+		sd->magic_addrace[RC_DEMIHUMAN] += 15;
+	}
+	
 	// ----- STATS CALCULATION -----
-
 	// Job bonuses
 	index = pc->class2idx(sd->status.class_);
 	for(i=0;i<(int)sd->status.job_level && i<MAX_LEVEL;i++){
@@ -2640,6 +2659,10 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 	if((skill_lv=pc->checkskill(sd,CR_TRUST))>0)
 		bstatus->max_hp += skill_lv*200;
 
+	// Dess - Olympiad (Бонусы хиро)
+	if(sd->state.hero && !map_olympiad(sd->bl.m))
+		bstatus->max_hp += bstatus->max_hp * 15 / 100;
+		
 	// Apply relative modifiers from equipment
 	if(sd->hprate < 0)
 		sd->hprate = 0;
@@ -2661,6 +2684,10 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 	i64 = sd->status.max_sp + (int)bstatus->max_sp;
 	bstatus->max_sp = (unsigned int)cap_value(i64, 0, INT_MAX);
 
+	// Dess - Olympiad (Бонусы хиро)
+	if(sd->state.hero && !map_olympiad(sd->bl.m))
+		bstatus->max_sp += bstatus->max_sp * 15 / 100;
+		
 	// Absolute modifiers from passive skills
 	if((skill_lv=pc->checkskill(sd,SL_KAINA))>0)
 		bstatus->max_sp += 30*skill_lv;
@@ -3020,7 +3047,7 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt) {
 			sd->magic_addele[ELE_EARTH] += 25;
 	}
 	status_cpy(&sd->battle_status, bstatus);
-
+	
 	// ----- CLIENT-SIDE REFRESH -----
 	if(!sd->bl.prev) {
 		//Will update on LoadEndAck
@@ -7921,6 +7948,9 @@ int status_change_start(struct block_list *src, struct block_list *bl, enum sc_t
 				tick_time = 1000; // [GodLesZ] tick time
 				val3 = 0; // unused, previously speed adjustment
 				val4 = val1+3; //Seconds before SP substraction happen.
+				// Dess - Olympiad
+				if (map_olympiad(bl->m))
+					val4 /= 10;
 				break;
 			case SC_CHASEWALK:
 				val2 = tick>0?tick:10000; //Interval at which SP is drained.
@@ -7928,6 +7958,9 @@ int status_change_start(struct block_list *src, struct block_list *bl, enum sc_t
 				if (sc->data[SC_SOULLINK] && sc->data[SC_SOULLINK]->val2 == SL_ROGUE)
 					val3 -= 40;
 				val4 = 10+val1*2; //SP cost.
+				// Dess - Olympiad
+				if (map_olympiad(bl->m))
+					val2 /= 10;
 				if (map_flag_gvg(bl->m) || map->list[bl->m].flag.battleground) val4 *= 5;
 				break;
 			case SC_CLOAKING:
@@ -7943,6 +7976,9 @@ int status_change_start(struct block_list *src, struct block_list *bl, enum sc_t
 					val4 |= battle_config.pc_cloak_check_type&7;
 				else
 					val4 |= battle_config.monster_cloak_check_type&7;
+				// Dess - Olympiad
+				if (map_olympiad(bl->m))
+					val2 /= 10;	
 				break;
 			case SC_SIGHT: /* splash status */
 			case SC_RUWACH:
@@ -10320,6 +10356,7 @@ int status_change_end_(struct block_list* bl, enum sc_type type, int tid, const 
 			break;
 
 		case SC_HIDING:
+			clif->spawn(bl); // Dess - Olympiad
 			sc->option &= ~OPTION_HIDE;
 			opt_flag|= 2|4; //Check for warp trigger + AoE trigger
 			break;
@@ -10332,6 +10369,7 @@ int status_change_end_(struct block_list* bl, enum sc_type type, int tid, const 
 			break;
 		case SC__INVISIBILITY:
 		case SC_CHASEWALK:
+			clif->spawn(bl); // Dess - Olympiad
 			sc->option &= ~(OPTION_CHASEWALK|OPTION_CLOAK);
 			opt_flag|= 2;
 			break;

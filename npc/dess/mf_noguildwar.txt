@@ -1,0 +1,163 @@
+1@cata	mapflag	noguildwar
+2@cata	mapflag	noguildwar
+1@nyd	mapflag	noguildwar
+2@nyd	mapflag	noguildwar
+1@orcs	mapflag	noguildwar
+2@orcs	mapflag	noguildwar
+1@tower	mapflag	noguildwar
+2@tower	mapflag	noguildwar
+3@tower	mapflag	noguildwar
+4@tower	mapflag	noguildwar
+5@tower	mapflag	noguildwar
+6@tower	mapflag	noguildwar
+1@mist	mapflag	noguildwar
+1@cash	mapflag	noguildwar
+1@pump	mapflag	noguildwar
+2@pump	mapflag	noguildwar
+1@lhz	mapflag	noguildwar
+1@ma_h	mapflag	noguildwar
+1@ma_c	mapflag	noguildwar
+1@ma_b	mapflag	noguildwar
+1@ecl	mapflag	noguildwar
+
+bat_a01	mapflag	noguildwar
+bat_a02	mapflag	noguildwar
+bat_b01	mapflag	noguildwar
+bat_b02	mapflag	noguildwar
+bat_c01	mapflag	noguildwar
+bat_c02	mapflag	noguildwar
+bat_c03	mapflag	noguildwar
+
+guild_vs1	mapflag	noguildwar
+guild_vs2	mapflag	noguildwar
+guild_vs3	mapflag	noguildwar
+guild_vs4	mapflag	noguildwar
+guild_vs5	mapflag	noguildwar
+
+ayo_in01	mapflag	noguildwar
+ayo_in02	mapflag	noguildwar
+alberta_in	mapflag	noguildwar
+alberta	mapflag	noguildwar
+alde_alche	mapflag	noguildwar
+aldeba_in	mapflag	noguildwar
+aldebaran	mapflag	noguildwar
+ama_in01	mapflag	noguildwar
+ama_in02	mapflag	noguildwar
+amatsu	mapflag	noguildwar
+cmd_in01	mapflag	noguildwar
+cmd_in02	mapflag	noguildwar
+comodo	mapflag	noguildwar
+gef_tower	mapflag	noguildwar
+geffen	mapflag	noguildwar
+geffen_in	mapflag	noguildwar
+gon_in	mapflag	noguildwar
+gonryun	mapflag	noguildwar
+gon_test	mapflag	noguildwar
+in_hunter	mapflag	noguildwar
+in_moc_16	mapflag	noguildwar
+in_orcs01	mapflag	noguildwar
+izlude_in	mapflag	noguildwar
+izlude	mapflag	noguildwar
+hugel	mapflag	noguildwar
+hu_in01	mapflag	noguildwar
+lighthalzen	mapflag	noguildwar
+lhz_airport	mapflag	noguildwar
+lhz_in01	mapflag	noguildwar
+lhz_in02	mapflag	noguildwar
+lhz_in03	mapflag	noguildwar
+louyang	mapflag	noguildwar
+lou_in01	mapflag	noguildwar
+lou_in02	mapflag	noguildwar
+moc_castle	mapflag	noguildwar
+monk_in	mapflag	noguildwar
+morocc_in	mapflag	noguildwar
+morocc	mapflag	noguildwar
+mosk_in	mapflag	noguildwar
+nif_in	mapflag	noguildwar
+payon_in01	mapflag	noguildwar
+payon_in02	mapflag	noguildwar
+payon_in03	mapflag	noguildwar
+payon	mapflag	noguildwar
+pay_arche	mapflag	noguildwar
+prt_are_in	mapflag	noguildwar
+prt_are01	mapflag	noguildwar
+prt_castle	mapflag	noguildwar
+prt_church	mapflag	noguildwar
+prt_in	mapflag	noguildwar
+prontera	mapflag	noguildwar
+sec_in01	mapflag	noguildwar
+job_sword1	mapflag	noguildwar
+um_in	mapflag	noguildwar
+umbala	mapflag	noguildwar
+xmas_in	mapflag	noguildwar
+xmas	mapflag	noguildwar
+yuno_in01	mapflag	noguildwar
+yuno_in03	mapflag	noguildwar
+yuno_in04	mapflag	noguildwar
+yuno_in05	mapflag	noguildwar
+yuno	mapflag	noguildwar
+yuno_pre	mapflag	noguildwar
+y_airport	mapflag	noguildwar
+rachel	mapflag	noguildwar
+ra_in01	mapflag	noguildwar
+ra_temin	mapflag	noguildwar
+airplane	mapflag	noguildwar
+airport	mapflag	noguildwar
+einbech	mapflag	noguildwar
+einbroch	mapflag	noguildwar
+ein_in01	mapflag	noguildwar
+ayothaya	mapflag	noguildwar
+veins	mapflag	noguildwar
+ve_in	mapflag	noguildwar
+ve_in02	mapflag	noguildwar
+cave	mapflag	noguildwar
+
+e_tower	mapflag	noguildwar
+
+mid_camp	mapflag	noguildwar
+mid_campin	mapflag	noguildwar
+man_fild01	mapflag	noguildwar
+moc_fild22b	mapflag	noguildwar
+que_dan01	mapflag	noguildwar
+que_dan02	mapflag	noguildwar
+schg_que01	mapflag	noguildwar
+arug_que01	mapflag	noguildwar
+
+bat_room	mapflag	noguildwar
+
+manuk	mapflag	noguildwar
+man_in01	mapflag	noguildwar
+splendide	mapflag	noguildwar
+spl_in01	mapflag	noguildwar
+spl_in02	mapflag	noguildwar
+
+moc_para01	mapflag	noguildwar
+
+brasilis	mapflag	noguildwar
+bra_in01	mapflag	noguildwar
+
+dicastes01	mapflag	noguildwar
+dicastes02	mapflag	noguildwar
+dic_in01	mapflag	noguildwar
+
+s_atelier	mapflag	noguildwar
+
+mora	mapflag	noguildwar
+
+dewata	mapflag	noguildwar
+dew_in01	mapflag	noguildwar
+
+malangdo	mapflag	noguildwar
+mal_in01	mapflag	noguildwar
+mal_in02	mapflag	noguildwar
+
+malaya	mapflag	noguildwar
+ma_scene01	mapflag	noguildwar
+ma_in01	mapflag	noguildwar
+
+eclage	mapflag	noguildwar
+ecl_in01	mapflag	noguildwar
+ecl_in02	mapflag	noguildwar
+ecl_in03	mapflag	noguildwar
+ecl_in04	mapflag	noguildwar
+ecl_hub01	mapflag	noguildwar

@@ -6,6 +6,8 @@
 #define MAP_GUILD_H
 
 #include "map.h" // EVENT_NAME_LENGTH, TBL_PC
+#include "clif.h" // Dess (clif_colors)
+#include "skill.h" // Dess (MAX_SKILL_LEVEL)
 #include "../common/cbasetypes.h"
 #include "../common/db.h"
 #include "../common/mmo.h"
@@ -48,10 +50,22 @@ struct s_guild_skill_tree {
 	} need[MAX_GUILD_SKILL_REQUIRE];
 };
 
+// Dess - Guild Reputation Skills
+struct guild_rep_skills_db {
+	int id;
+	char name[128];
+	struct {
+		short lv;
+		char description[128];
+		struct script_code *script;
+	} level_data[MAX_SKILL_LEVEL];
+};
+//
 
 struct guild_interface {
 	void (*init) (bool minimal);
 	void (*final) (void);
+	struct guild_rep_skills_db *rep_skills_data[GD_MAX - GD_REPSKILLBASE]; // Dess - Guild Reputation Skills
 	/* */
 	DBMap* db; // int guild_id -> struct guild*
 	DBMap* castle_db; // int castle_id -> struct guild_castle*
@@ -161,6 +175,23 @@ struct guild_interface {
 	int (*check_member) (struct guild *g);
 	int (*get_alliance_count) (struct guild *g,int flag);
 	void (*castle_reconnect_sub) (void *key, void *data, va_list ap);
+	
+	// Dess
+	void (*colormes) (struct guild *g, enum clif_colors color, const char* msg);
+	
+	// Dess - Guild Reputation
+	void (*add_rep) (struct guild *g, int amount);
+	
+	// Dess - Guild Wars
+	int (*start_war) (struct map_session_data *sd, int guild_id);
+	void (*stop_war) (struct map_session_data *sd, int guild_id);
+	bool (*check_war) (int guild_id, int guild_id2);
+	
+	// Dess - Guild Reputation Skills
+	void (*repskilldb_clear) (void);
+	void (*read_repskilldb) (void);
+	struct guild_rep_skills_db *(*read_repskilldb_sub) (config_setting_t *cs, int n, const char *source);
+	void (*calc_repskills) (struct map_session_data *sd);
 };
 
 struct guild_interface *guild;

@@ -455,6 +455,10 @@ int skillnotok (uint16 skill_id, struct map_session_data *sd)
 	if (idx == 0)
 		return 1; // invalid skill id
 
+	// Dess - Spec Mode
+	if( sd->state.spec_mode )
+		return 1;
+		
 	if( pc_has_permission(sd, PC_PERM_DISABLE_SKILL_USAGE) )
 		return 1;
 
@@ -506,6 +510,17 @@ int skillnotok (uint16 skill_id, struct map_session_data *sd)
 				clif->skill_mapinfomessage(sd,0);
 				return 1;
 			}
+			
+			// Dess - Guild Wars
+			if (DIFF_TICK(timer->gettick(), sd->war_lasthit_tick) < WAR_LASTHIT_DELAY) {
+				char message[CHAT_SIZE_MAX];
+				
+				snprintf(message, CHAT_SIZE_MAX, "You must wait %lu second(s) before you can use it.", (WAR_LASTHIT_DELAY - DIFF_TICK(timer->gettick(), sd->war_lasthit_tick)) / 1000);
+				clif->colormes(sd->fd, COLOR_RED, message);
+				return 1;
+			}
+			//
+			
 			return 0; // gonna be checked in 'skill->castend_nodamage_id'
 		case WE_CALLPARTNER:
 		case WE_CALLPARENT:

@@ -1356,6 +1356,8 @@ int pc_reg_received(struct map_session_data *sd)
 	if( npc->motd ) /* [Ind/Hercules] */
 		script->run(npc->motd->u.scr.script, 0, sd->bl.id, npc->fake_nd->bl.id);
 	
+	pc->check_ip_restriction(sd); // Dess - IP Restriction
+	
 	return 1;
 }
 
@@ -4299,6 +4301,17 @@ int pc_isUseitem(struct map_session_data *sd,int n)
 				clif->skill_mapinfomessage(sd,0);
 				return 0;
 			}
+			
+			// Dess - Guild Wars
+			if (DIFF_TICK(timer->gettick(), sd->war_lasthit_tick) < WAR_LASTHIT_DELAY) {
+				char message[CHAT_SIZE_MAX];
+				
+				snprintf(message, CHAT_SIZE_MAX, "You must wait %lu second(s) before you can use it.", (WAR_LASTHIT_DELAY - DIFF_TICK(timer->gettick(), sd->war_lasthit_tick)) / 1000);
+				clif->colormes(sd->fd, COLOR_RED, message);
+				return 0;
+			}
+			//
+			
 			/* Fall through */
 		case ITEMID_WING_OF_BUTTERFLY:
 		case ITEMID_DUN_TELE_SCROLL1:
@@ -4314,6 +4327,16 @@ int pc_isUseitem(struct map_session_data *sd,int n)
 			}
 			if( nameid != ITEMID_WING_OF_FLY && nameid != ITEMID_GIANT_FLY_WING && map->list[sd->bl.m].flag.noreturn )
 				return 0;
+				
+			// Dess - Guild Wars
+			if (DIFF_TICK(timer->gettick(), sd->war_lasthit_tick) < WAR_LASTHIT_DELAY) {
+				char message[CHAT_SIZE_MAX];
+				
+				snprintf(message, CHAT_SIZE_MAX, "You must wait %lu second(s) before you can use it.", (WAR_LASTHIT_DELAY - DIFF_TICK(timer->gettick(), sd->war_lasthit_tick)) / 1000);
+				clif->colormes(sd->fd, COLOR_RED, message);
+				return 0;
+			}
+			//
 			break;
 		case ITEMID_BRANCH_OF_DEAD_TREE:
 		case ITEMID_RED_POUCH_OF_SURPRISE:
@@ -4459,6 +4482,10 @@ int pc_useitem(struct map_session_data *sd,int n) {
 	if( sd->status.inventory[n].nameid <= 0 || sd->status.inventory[n].amount <= 0 )
 		return 0;
 
+	// Dess - Spec Mode
+	if( sd->state.spec_mode )
+		return 0;	
+		
 	if( !pc->isUseitem(sd,n) )
 		return 0;
 
@@ -5125,7 +5152,12 @@ int pc_setpos(struct map_session_data* sd, unsigned short map_index, int x, int 
 	sd->bl.m = m;
 	sd->bl.x = sd->ud.to_x = x;
 	sd->bl.y = sd->ud.to_y = y;
-
+	
+	// Dess - IP Restriction
+	if (!sd->state.connect_new)
+		pc->check_ip_restriction(sd);
+	//
+	
 	if( sd->status.guild_id > 0 && map->list[m].flag.gvg_castle ) { // Increased guild castle regen [Valaris]
 		struct guild_castle *gc = guild->mapindex2gc(sd->mapindex);
 		if(gc && gc->guild_id == sd->status.guild_id)
@@ -7031,7 +7063,10 @@ int pc_dead(struct map_session_data *sd,struct block_list *src) {
 		clif->sc_end(&sd->bl,sd->bl.id,SELF,SI_SIT);
 	}
 
-	pc_setdead(sd);
+	// Dess - Olympiad
+	if (map_olympiad(sd->bl.m))
+		pc_setdead(sd);
+		
 	//Reset menu skills/item skills
 	if (sd->skillitem)
 		sd->skillitem = sd->skillitemlv = 0;
@@ -7115,6 +7150,24 @@ int pc_dead(struct map_session_data *sd,struct block_list *src) {
 
 			// To-do: Receive exp on certain occasions
 #endif
+		}
+		
+		// Dess - Guild Wars
+		struct guild *g, *sg;
+		char message[CHAT_SIZE_MAX];
+		
+		if ((g = sd->guild) && (sg = guild->search(status->get_guild_id(src)))) {
+			if (guild->check_war(g->guild_id, sg->guild_id) && !map->list[src->m].flag.pvp && !map->list[src->m].flag.noguildwar && !map->list[src->m].flag.battleground) {
+				snprintf(message, CHAT_SIZE_MAX, "%s was killed by a guild member of [%s].", sd->status.name, sg->name);
+				guild->colormes(g, COLOR_LIGHT_RED, message);
+				guild->add_rep(g, -1);
+				
+				snprintf(message, CHAT_SIZE_MAX, "A guild member of [%s] was killed by %s.", g->name, status->get_name(src));
+				guild->colormes(sg, COLOR_LIGHT_BLUE, message);
+				
+				if (g->rep > 0)
+					guild->add_rep(sg, 1);
+			}
 		}
 	}
 
@@ -7879,6 +7932,15 @@ int pc_jobchange(struct map_session_data *sd,int job, int upper)
 	sd->status.job_level=1;
 	sd->status.job_exp=0;
 
+	// Dess - Guild Reputation
+	if (sd->guild) {
+		if (sd->class_&JOBL_2 && !(sd->class_&JOBL_UPPER)) // смена на вторую профессию
+			guild->add_rep(sd->guild, 50);
+		else if (sd->class_ == MAPID_NOVICE_HIGH) // смена на хай новиса
+			guild->add_rep(sd->guild, 250);
+	}
+	//
+	
 	if (sd->status.base_level > pc->maxbaselv(sd)) {
 		sd->status.base_level = pc->maxbaselv(sd);
 		sd->status.base_exp=0;
@@ -7969,7 +8031,11 @@ int pc_jobchange(struct map_session_data *sd,int job, int upper)
 			break;
 		}
 	}
-
+	
+	// Dess - Olympiad
+	if( SQL_ERROR == SQL->Query(map->mysql_handle, "UPDATE `olympiad_stat` SET `class` = %d WHERE `char_id` = %d", sd->status.class_, sd->status.char_id) )
+		Sql_ShowDebug(map->mysql_handle);
+		
 	return 0;
 }
 
@@ -10921,6 +10987,73 @@ bool pc_db_checkid(unsigned int class_)
 		|| (class_ >= JOB_REBELLION      && class_ <  JOB_MAX            );
 }
 
+// Dess - IP Restriction
+int pc_check_ip_restriction(struct map_session_data* sd) {
+	struct s_mapiterator* iter;
+	struct map_session_data *tsd;
+	unsigned short ip_restriction;
+	int c = 0;
+
+	nullpo_retr(0, sd);
+
+	if ((ip_restriction = map->list[sd->bl.m].ip_restriction) != 0) {
+		iter = mapit_getallusers();
+		while ((tsd = (TBL_PC*)mapit->next(iter)) != NULL) {
+			if (sd->bl.m != tsd->bl.m)
+				continue;
+
+			if (sd->status.account_id == tsd->status.account_id)
+				continue;
+
+			if (session[sd->fd]->client_addr != session[tsd->fd]->client_addr)
+				continue;
+
+			c++;
+		}
+		mapit->free(iter);
+
+		if (c >= ip_restriction) {
+			char output[128];
+			sprintf(output, "Maximum number of connections from the same IP address on this map: %d.", map->list[sd->bl.m].ip_restriction);
+			clif->colormes(sd->fd, COLOR_RED, output);
+			clif->authfail_fd(sd->fd, 9);
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+// Dess - Spec Mode
+void pc_spec_mode(struct map_session_data* sd, int flag) {
+	nullpo_retv(sd);
+
+	sd->state.spec_mode = flag;
+
+	if (flag) {
+		if (sd->md)
+			mercenary->delete(sd->md, 2);
+		
+		if (sd->pd)
+			pet->menu(sd, 3);
+			
+		if (sd->hd)
+			homun->vaporize(sd, 0);
+
+		sd->sc.option |= OPTION_INVISIBLE;
+		sd->vd.class_ = INVISIBLE_CLASS;
+		
+		sd->base_status.speed = 50;
+		status_calc_bl(&sd->bl, SCB_SPEED);
+	}
+	else {
+		sd->sc.option &= ~OPTION_INVISIBLE;
+		status->set_viewdata(&sd->bl, sd->status.class_);
+	}
+	
+	clif->changeoption(&sd->bl);
+}
+
 void do_final_pc(void) {
 	
 	db_destroy(pc->itemcd_db);
@@ -11287,4 +11420,7 @@ void pc_defaults(void) {
 	pc->autotrade_start = pc_autotrade_start;
 	pc->autotrade_prepare = pc_autotrade_prepare;
 	pc->autotrade_populate = pc_autotrade_populate;
+	
+	pc->check_ip_restriction = pc_check_ip_restriction; // Dess - IP Restriction
+	pc->spec_mode = pc_spec_mode; // Dess - Spec Mode
 }

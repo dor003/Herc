@@ -3321,6 +3321,7 @@ void map_flags_init(void) {
 		map->list[i].misc_damage_rate   = 100;
 		map->list[i].short_damage_rate  = 100;
 		map->list[i].long_damage_rate   = 100;
+		map->list[i].ip_restriction		= 0; // Dess - IP Restriction
 		
 		if( map->list[i].qi_data )
 			aFree(map->list[i].qi_data);
@@ -4678,6 +4679,18 @@ bool map_zone_mf_cache(int m, char *flag, char *params) {
 				map_zone_mf_cache_add(m,"nocashshop\toff");
 			else if( map->list[m].flag.nocashshop )
 				map_zone_mf_cache_add(m,"nocashshop");
+		}
+	} else if ( !strcmpi(flag,"ip_restriction") ) {	// Dess - IP Restriction
+		if( !state ) {
+			if( map->list[m].ip_restriction != 0 ) {
+				sprintf(rflag,"ip_restriction\t%d",map->list[m].ip_restriction);
+				map_zone_mf_cache_add(m,rflag);
+			}
+		} if( sscanf(params, "%d", &state) == 1 ) {
+			if( state != map->list[m].ip_restriction ) {
+				sprintf(rflag,"ip_restriction\t%s",params);
+				map_zone_mf_cache_add(m,rflag);
+			}
 		}
 	}
 

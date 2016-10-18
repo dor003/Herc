@@ -1258,6 +1258,7 @@ void intif_parse_GuildBasicInfoChanged(int fd) {
 			memcpy(&(g->skill[idx]), gs, sizeof(g->skill[idx]));
 			break;
 		}
+		case GBI_REP:        g->rep = RFIFOL(fd,10); break; // Dess - Guild Reputation
 	}
 }
 

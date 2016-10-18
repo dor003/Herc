@@ -8916,7 +8916,7 @@ BUILDIN(guildskill) {
 
 	memcpy(&gd_skill, &(gd->skill[id]), sizeof(gd->skill[id]));
 	gd_skill.lv += level;
-
+	
 	intif->guild_change_basicinfo( gd->guild_id, GBI_SKILLLV, &(gd_skill), sizeof(gd_skill) );
 	return true;
 }
@@ -11744,6 +11744,7 @@ BUILDIN(setmapflag) {
 			case MF_RESET:              map->list[m].flag.reset = 1; break;
 			case MF_NOTOMB:             map->list[m].flag.notomb = 1; break;
 			case MF_NOCASHSHOP:         map->list[m].flag.nocashshop = 1; break;
+			case MF_NOGUILDWAR:			map->list[m].flag.noguildwar = 1; break; // Dess - Guild Wars
 		}
 	}
 
@@ -11830,6 +11831,7 @@ BUILDIN(removemapflag) {
 			case MF_RESET:              map->list[m].flag.reset = 0; break;
 			case MF_NOTOMB:             map->list[m].flag.notomb = 0; break;
 			case MF_NOCASHSHOP:         map->list[m].flag.nocashshop = 0; break;
+			case MF_NOGUILDWAR:			map->list[m].flag.noguildwar = 0; break; // Dess - Guild Wars
 		}
 	}
 
@@ -18871,6 +18873,8 @@ bool script_hqueue_remove(int idx, int var) {
 			}
 
 		}
+		else
+			return true;
 	}
 	return false;
 }
@@ -19627,6 +19631,288 @@ BUILDIN(channelmes)
 	return true;
 }
 
+// Dess
+BUILDIN(mes2charid) {
+	struct map_session_data* sd = map->charid2sd(script_getnum(st, 3));
+
+	if (sd) {
+		clif_disp_onlyself(sd, script_getstr(st, 2), strlen(script_getstr(st, 2)));
+		script_pushint(st, 1);
+	}
+	else {
+		script_pushint(st, 0);
+	}
+		
+	return true;
+}
+
+BUILDIN(getcharinfo) {
+	struct map_session_data* sd;
+	
+	if ((sd = map->charid2sd(script_getnum(st,2))) != NULL) {
+		switch(script_getnum(st,3)) {
+			case 0: script_pushstrcopy(st,sd->status.name); break; //name
+			case 1: script_pushint(st,sd->status.account_id); break; //account_id
+			case 2: script_pushint(st,sd->battle_status.hp); break; //hp
+			case 3: script_pushint(st,sd->battle_status.sp); break; //sp
+			case 4: script_pushconststr(st,map->list[sd->bl.m].name); break; //map name
+			
+			default: script_pushint(st,-1);
+		}
+	}
+	else {
+		script_pushint(st,-1);
+	}
+		
+	return true;
+}
+
+BUILDIN(healcharid) {
+	struct map_session_data* sd = map->charid2sd(script_getnum(st, 4));
+
+	if (sd)
+		pc->percentheal(sd, script_getnum(st, 2), script_getnum(st, 3));
+
+	return true;
+}
+
+BUILDIN(ischaronline) {
+	struct map_session_data* sd = map->charid2sd(script_getnum(st, 2));
+
+	if (sd)
+		script_pushint(st, 1);
+	else
+		script_pushint(st, 0);
+
+	return true;
+}
+
+BUILDIN(add_cash) {
+	int acc_id = script_getnum(st,2);
+	int amount = script_getnum(st,3);
+	struct map_session_data* sd = map->id2sd(acc_id);
+	
+	if (!acc_id || !amount)
+		return false;
+
+	if (sd) {
+		pc_setaccountreg(sd, script->add_str("#CASHPOINTS"), sd->cashPoints + amount);
+	}
+	else {
+		if (SQL_ERROR == SQL->Query(map->mysql_handle, "INSERT INTO `acc_reg_num_db` VALUES (%d, '#CASHPOINTS', 0, %d) ON DUPLICATE KEY UPDATE `value` = `value` + %d", acc_id, amount, amount))
+			Sql_ShowDebug(map->mysql_handle);
+	}
+	
+	return true;
+}
+
+BUILDIN(getguildlevel) {
+	struct guild *g;
+	int guild_id = script_getnum(st, 2);
+
+	if (!(g = guild->search(guild_id)))
+		return false;
+
+	script_pushint(st, g->guild_lv);
+	return true;
+}
+//
+
+// Dess - Spec Mode
+BUILDIN(spec_mode) {
+	struct map_session_data* sd = script_rid2sd(st);
+	int flag = script_getnum(st,2);
+	
+	pc->spec_mode(sd, flag);
+
+	return true;
+}
+
+BUILDIN(is_spec) {
+	struct map_session_data* sd = script_rid2sd(st);
+
+	if (sd && sd->state.spec_mode)
+		script_pushint(st, 1);
+	else
+		script_pushint(st, 0);
+	
+	return true;
+}
+//
+
+// Dess - Olympiad
+BUILDIN(olympiad_resetdamage) {
+	struct map_session_data* sd = map->charid2sd(script_getnum(st, 2));
+
+	if (sd)
+		sd->olympiad_damage = 0;
+		
+	return true;
+}
+
+BUILDIN(olympiad_getdamage) {
+	struct map_session_data* sd = map->charid2sd(script_getnum(st,2));
+
+	if (sd)
+		script_pushint(st, sd->olympiad_damage);
+	else
+		script_pushint(st,0);
+
+	return true;
+}
+
+BUILDIN(olympiad_sethero) {
+	struct map_session_data* sd = script_rid2sd(st);
+
+	if (sd) {
+		sd->state.hero = 1;
+		pc_setglobalreg(sd,script->add_str("hero"), 1);
+		status_calc_pc(sd, 0);
+	}
+	
+	return true;
+}
+
+BUILDIN(olympiad_resetheroes) {
+	struct map_session_data* sd;
+	struct s_mapiterator* iter;
+	
+	iter = mapit_getallusers();
+	for(sd = (TBL_PC*)mapit->first(iter); mapit->exists(iter); sd = (TBL_PC*)mapit->next(iter)) {
+		if (sd && sd->state.hero) {
+			sd->state.hero = 0;
+			status_calc_pc(sd, 0);
+		}
+	}
+	mapit->free(iter);
+	
+	return true;
+}
+//
+
+// Dess - Guild Reputation
+BUILDIN(addguildrep) {
+	struct guild *g;
+	int guild_id = script_getnum(st, 2);
+	int amount = script_getnum(st, 3);
+
+	if (!(g = guild->search(guild_id)))
+		return false;
+
+	guild->add_rep(g, amount);
+	
+	return true;
+}
+
+BUILDIN(getguildrep) {
+	struct guild *g;
+	int guild_id = script_getnum(st, 2);
+
+	if (!(g = guild->search(guild_id)))
+		return false;
+
+	script_pushint(st, g->rep);
+	return true;
+}
+//
+
+// Dess - Guild Wars
+BUILDIN(guildwarinfo) {
+	int guild_id = script_getnum(st, 2);
+	int i, j = 0;
+	struct guild *g = guild->search(guild_id);
+	
+	if (!g)
+		return false;
+	
+	for (i = 0; i < MAX_GUILDALLIANCE; i++) {
+		if (g->alliance[i].guild_id > 0 && g->alliance[i].opposition == 2) {
+			mapreg->setreg(reference_uid(script->add_str("$@guildwarid"), j),g->alliance[i].guild_id);
+			mapreg->setregstr(reference_uid(script->add_str("$@guildwarname$"), j),g->alliance[i].name);
+			
+			j++;
+		}
+	}
+	
+	mapreg->setreg(script->add_str("$@guildwarcount"),j);
+	
+	return true;
+}
+
+BUILDIN(guildstartwar) {
+	struct map_session_data *sd = script_rid2sd(st);
+	struct guild *g;
+	
+	if (!sd)
+		return false;
+		
+	if (!script_hasdata(st, 2) || !(g = guild->searchname((char *)script_getstr(st, 2)))) {
+		script_pushint(st, 1);
+		return true;
+	}
+ 
+	script_pushint(st, guild->start_war(sd, g->guild_id));
+	return true;
+}
+
+
+BUILDIN(guildstopwar) {
+	struct map_session_data *sd = script_rid2sd(st);
+	int guild_id = script_getnum(st, 2);
+	
+	if (!sd)
+		return false;
+ 
+	guild->stop_war(sd, guild_id);
+	return true;
+}
+//
+
+// Dess - Guild Reputation Skills
+BUILDIN(getrepskillname) {
+	int skill_id = script_getnum(st, 2);
+	
+	if (skill_id < GD_REPSKILLBASE || skill_id > GD_MAX)
+		return false;
+		
+	if (guild->rep_skills_data[skill_id - GD_REPSKILLBASE]->name != NULL)
+		script_pushstrcopy(st, guild->rep_skills_data[skill_id - GD_REPSKILLBASE]->name);
+	else
+		script_pushstrcopy(st, "NULL");
+		
+	return true;
+}
+
+BUILDIN(getrepskilldesc) {
+	int skill_id = script_getnum(st, 2);
+	int skill_lv = script_getnum(st, 3);
+	int i;
+	
+	if (skill_id < GD_REPSKILLBASE || skill_id > GD_MAX || skill_lv < 1 || skill_lv > MAX_SKILL_LEVEL)
+		return false;
+		
+	for (i = 0; i < MAX_SKILL_LEVEL; i++) {
+		if (guild->rep_skills_data[skill_id - GD_REPSKILLBASE]->level_data[i].lv == skill_lv) {
+			script_pushstrcopy(st, guild->rep_skills_data[skill_id - GD_REPSKILLBASE]->level_data[i].description);
+			return true;
+		}	
+	}
+
+	script_pushstrcopy(st, "NULL");
+	return true;
+}
+
+BUILDIN(getgdskillmax) {
+	int skill_id = script_getnum(st, 2);
+	
+	if (skill_id < GD_SKILLBASE || skill_id > GD_MAX)
+		return false;
+	
+	script_pushint(st, guild->skill_get_max(skill_id));
+	return true;
+}
+//
+
 /** place holder for the translation macro **/
 BUILDIN(_) {
 	return true;
@@ -20263,6 +20549,39 @@ void script_parse_builtin(void) {
 
 		BUILDIN_DEF(channelmes, "ss"),
 		BUILDIN_DEF(_,"s"),
+		
+		// Dess
+		BUILDIN_DEF(mes2charid, "si"),
+		BUILDIN_DEF(getcharinfo, "ii"),
+		BUILDIN_DEF(healcharid, "iii"),
+		BUILDIN_DEF(ischaronline, "i"),
+		BUILDIN_DEF(add_cash,"ii"),
+		BUILDIN_DEF(getguildlevel,"i"),
+		
+		// Dess - Spec Mode
+		BUILDIN_DEF(spec_mode, "i"),
+		BUILDIN_DEF(is_spec, ""),
+		
+		// Dess - Olympiad
+		BUILDIN_DEF(olympiad_resetdamage, "i"),
+		BUILDIN_DEF(olympiad_getdamage, "i"),
+		BUILDIN_DEF(olympiad_sethero, ""),
+		BUILDIN_DEF(olympiad_resetheroes, ""),
+		
+		// Dess - Guild Reputation
+		BUILDIN_DEF(addguildrep,"ii"),
+		BUILDIN_DEF(getguildrep,"i"),
+		
+		// Dess - Guild Wars
+		BUILDIN_DEF(guildwarinfo,"i"),
+		BUILDIN_DEF(guildstartwar,"s"),
+		BUILDIN_DEF(guildstopwar,"i"),
+		
+		// Dess - Guild Reputation Skills
+		BUILDIN_DEF(getrepskillname,"i"),
+		BUILDIN_DEF(getrepskilldesc,"ii"),
+		BUILDIN_DEF(getgdskillmax,"i"),
+		
 	};
 	int i, len = ARRAYLENGTH(BUILDIN);
 	RECREATE(script->buildin, char *, script->buildin_count + len); // Pre-alloc to speed up

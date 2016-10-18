@@ -372,6 +372,10 @@ enum clif_colors {
 	COLOR_RED,
 	COLOR_DEFAULT,
 	COLOR_WHITE,
+	// Dess
+	COLOR_LIGHT_RED,
+	COLOR_LIGHT_BLUE,
+	//
 	COLOR_MAX
 };
 
@@ -1274,6 +1278,10 @@ struct clif_interface {
 	/* NPC Market (by Ind after an extensive debugging of the packet, only possible thanks to Yommy <3) */
 	void (*pNPCMarketClosed) (int fd, struct map_session_data *sd);
 	void (*pNPCMarketPurchase) (int fd, struct map_session_data *sd);
+	
+	// Dess - Guild Wars
+	void (*sendwaremblem_area) (struct map_session_data *sd);
+	void (*sendwaremblem_single) (int fd, struct map_session_data *sd);
 };
 
 struct clif_interface *clif;

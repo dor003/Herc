@@ -1699,6 +1699,14 @@ int clif_delayquit(int tid, int64 tick, int id, intptr_t data) {
  *
  *------------------------------------------*/
 void clif_quitsave(int fd,struct map_session_data *sd) {
+	// Dess - Guild Wars
+	if (DIFF_TICK(timer->gettick(), sd->war_lasthit_tick) < WAR_LASTHIT_DELAY && sd->fd) {
+		session[sd->fd]->session_data = NULL;
+		sd->fd = 0;
+		timer->add(timer->gettick() + WAR_LASTHIT_DELAY, clif->delayquit, sd->bl.id, 0);
+		return;
+	}
+	//
 	if (!battle_config.prevent_logout ||
 		DIFF_TICK(timer->gettick(), sd->canlog_tick) > battle_config.prevent_logout)
 		map->quit(sd);
@@ -4056,6 +4064,12 @@ void clif_getareachar_unit(struct map_session_data* sd,struct block_list *bl) {
 					clif->sendbgemblem_single(sd->fd,tsd);
 				if ( tsd->status.robe )
 					clif->refreshlook(&sd->bl,bl->id,LOOK_ROBE,tsd->status.robe,SELF);
+				// Dess - Guild Wars
+				if (guild->check_war(sd->status.guild_id, status->get_guild_id(&tsd->bl)) && !map->list[tsd->bl.m].flag.battleground) {
+					clif->sendwaremblem_single(sd->fd,tsd);
+					clif->sendwaremblem_single(tsd->fd,sd);
+				}
+				//
 			}
 			break;
 		case BL_MER: // Devotion Effects
@@ -9070,6 +9084,13 @@ void clif_parse_LoadEndAck(int fd,struct map_session_data *sd) {
 	// reset the callshop flag if the player changes map
 	sd->state.callshop = 0;
 
+	// Dess - Spec Mode
+	if (sd->state.spec_mode == 2)
+		pc->spec_mode(sd, 0);
+	else if (sd->state.spec_mode == 1)
+		pc->spec_mode(sd, 2);
+	//
+	
 	map->addblock(&sd->bl);
 	clif->spawn(&sd->bl);
 
@@ -9337,6 +9358,18 @@ void clif_parse_LoadEndAck(int fd,struct map_session_data *sd) {
 		}
 	}
 #endif
+
+	status_calc_pc(sd, SCO_NONE); // Dess - Olympiad (для хиро?)
+	
+	// Dess - Olympiad (убираем при залете все бафы\мерков\петов)
+	if (map_olympiad(sd->bl.m)) {
+		status->change_clear(&sd->bl, 2);
+		
+		if (sd->md)
+			mercenary->delete(sd->md, 2);
+		if (sd->pd)
+			pet->menu(sd, 3);
+	}
 }
 
 
@@ -9511,6 +9544,16 @@ void clif_disconnect_ack(struct map_session_data* sd, short result)
 ///     0 = quit
 void clif_parse_QuitGame(int fd, struct map_session_data *sd)
 {
+	// Dess - Guild Wars
+	if (DIFF_TICK(timer->gettick(), sd->war_lasthit_tick) < WAR_LASTHIT_DELAY) {
+		char message[CHAT_SIZE_MAX];
+		
+		snprintf(message, CHAT_SIZE_MAX, "You must wait %lu second(s) before you can logout.", (WAR_LASTHIT_DELAY - DIFF_TICK(timer->gettick(), sd->war_lasthit_tick)) / 1000);
+		clif->colormes(sd->fd, COLOR_RED, message);
+		return;
+	}
+	//
+
 	/* Rovert's prevent logout option fixed [Valaris] */
 	if( !sd->sc.data[SC_CLOAKING] && !sd->sc.data[SC_HIDING] && !sd->sc.data[SC_CHASEWALK] && !sd->sc.data[SC_CLOAKINGEXCEED] && !sd->sc.data[SC__INVISIBILITY] &&
 		(!battle_config.prevent_logout || DIFF_TICK(timer->gettick(), sd->canlog_tick) > battle_config.prevent_logout) )
@@ -9858,6 +9901,9 @@ void clif_parse_ActionRequest_sub(struct map_session_data *sd, int action_type, 
 	switch(action_type) {
 		case 0x00: // once attack
 		case 0x07: // continuous attack
+			// Dess - Spec Mode
+			if (sd->state.spec_mode)
+				return;
 
 			if( (target = map->id2bl(target_id)) && target->type == BL_NPC ) {
 				npc->click(sd,(TBL_NPC*)target);
@@ -9960,6 +10006,16 @@ void clif_parse_Restart(int fd, struct map_session_data *sd) {
 			pc->respawn(sd,CLR_OUTSIGHT);
 			break;
 		case 0x01:
+			// Dess - Guild Wars
+			if (DIFF_TICK(timer->gettick(), sd->war_lasthit_tick) < WAR_LASTHIT_DELAY) {
+				char message[CHAT_SIZE_MAX];
+				
+				snprintf(message, CHAT_SIZE_MAX, "You must wait %lu second(s) before you can logout.", (WAR_LASTHIT_DELAY - DIFF_TICK(timer->gettick(), sd->war_lasthit_tick)) / 1000);
+				clif->colormes(sd->fd, COLOR_RED, message);
+				return;
+			}
+			//
+			
 			/* Rovert's Prevent logout option - Fixed [Valaris] */
 			if (!sd->sc.data[SC_CLOAKING] && !sd->sc.data[SC_HIDING] && !sd->sc.data[SC_CHASEWALK]
 			 && !sd->sc.data[SC_CLOAKINGEXCEED] && !sd->sc.data[SC__INVISIBILITY]
@@ -10317,6 +10373,10 @@ void clif_parse_NpcClicked(int fd,struct map_session_data *sd)
 {
 	struct block_list *bl;
 
+	// Dess - Spec Mode
+	if (sd->state.spec_mode)
+		return;
+	
 	if( pc_isdead(sd) ) {
 		clif->clearunit_area(&sd->bl,CLR_DEAD);
 		return;
@@ -18281,6 +18341,29 @@ int clif_parse(int fd) {
 	return 0;
 }
 
+// Dess - Guild Wars
+void clif_sendwaremblem_area(struct map_session_data *sd) {
+	unsigned char buf[33];
+	nullpo_retv(sd);
+
+	WBUFW(buf, 0) = 0x2dd;
+	WBUFL(buf,2) = sd->bl.id;
+	safestrncpy((char*)WBUFP(buf,6), sd->status.name, NAME_LENGTH);
+	WBUFW(buf,30) = sd->status.guild_id;
+	clif->send(buf,packet_len(0x2dd), &sd->bl, AREA);
+}
+
+void clif_sendwaremblem_single(int fd, struct map_session_data *sd) {
+	nullpo_retv(sd);
+	WFIFOHEAD(fd,32);
+	WFIFOW(fd,0) = 0x2dd;
+	WFIFOL(fd,2) = sd->bl.id;
+	safestrncpy((char*)WFIFOP(fd,6), sd->status.name, NAME_LENGTH);
+	WFIFOW(fd,30) = sd->status.guild_id;
+	WFIFOSET(fd,packet_len(0x2dd));
+}
+//
+
 static void __attribute__ ((unused)) packetdb_addpacket(short cmd, int len, ...) {
 	va_list va;
 	int i;
@@ -18353,7 +18436,7 @@ void clif_bc_ready(void) {
  *
  *------------------------------------------*/
 int do_init_clif(bool minimal) {
-	const char* colors[COLOR_MAX] = { "0xFF0000", "0x00ff00", "0xffffff" };
+	const char* colors[COLOR_MAX] = { "0xFF0000", "0x00ff00", "0xffffff", "0xff3366", "0x70b8ff" }; // Dess ("0xff3366", "0x70b8ff")
 	int i;
 
 	if (minimal)
@@ -19141,4 +19224,8 @@ void clif_defaults(void) {
 	/* NPC Market */
 	clif->pNPCMarketClosed = clif_parse_NPCMarketClosed;
 	clif->pNPCMarketPurchase = clif_parse_NPCMarketPurchase;
+	
+	// Dess - Guild Wars
+	clif->sendwaremblem_area = clif_sendwaremblem_area;
+	clif->sendwaremblem_single = clif_sendwaremblem_single;
 }

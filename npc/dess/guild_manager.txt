@@ -1,0 +1,560 @@
+prontera,124,67,2	script	Guild Manager	733,{
+	.@guild_id = getcharid(2);
+
+	mes "[" + strnpcinfo(0) + "]";
+	
+	if (!.@guild_id) {
+		mes "You are not in guild.";
+		close;
+	}
+	
+	mes "Hello, ^0000FF" + strcharinfo(0) + "^000000";
+	mes "Your guild has ^FF3366" + getguildrep(.@guild_id) + "^000000 reputation points.";
+	switch(select("Manage Guild Wars:Manage Reputation Skills:Change Guild Leader:Guild Wars FAQ:Leave")) {
+		case 1: callsub OnGuildWars; break;
+		case 2: callsub OnReputationSkills; break;
+		case 3: callsub OnChangeGuildLeader; break;
+		case 4: callsub OnGuildFaq; break;
+		
+		default: close;
+	}
+	end;
+	
+OnGuildWars:
+	next;
+	.@guild_id = getcharid(2);
+
+	switch (select("List of Wars:Declare War:End the War")) {
+		case 1:
+			guildwarinfo(.@guild_id);
+
+			.@count = $@guildwarcount;
+			
+			if (!.@count) {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "You are not at war with other guilds.";
+				close;
+			}
+			
+			copyarray .@war_guild_id[0], $@guildwarid[0], .@count;
+			copyarray .@war_guild_name$[0], $@guildwarname$[0], .@count;
+			
+			mes "[" + strnpcinfo(0) + "]";
+			mes "You have declared war on:";
+
+			for (.@i = 0; .@i < .@count; .@i++) {
+				mes " ^FF3366" + .@war_guild_name$[.@i] + "^000000";
+			}
+			close;
+			
+		case 2:
+			if (strcharinfo(0) != getguildmaster(.@guild_id)) {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "Available only for Guild Master.";
+				close;
+			}
+			mes "[" + strnpcinfo(0) + "]";
+			mes "Specify the ^FF3366name of the guild^000000 to start a war:";
+			input .@guild_name$;
+			next;
+			mes "[" + strnpcinfo(0) + "]";
+			
+			switch (guildstartwar(.@guild_name$)) {
+				case 0:
+					mes "You went to war with the guild ^FF3366[" + .@guild_name$ + "]^000000";
+					announce "Guild [" + strcharinfo(2) + "] has declared war on the guild [" + .@guild_name$ + "].", bc_all, 0xFF3366;
+					close;
+
+				case 1:
+					mes "Guild not found or guild members are not online.";
+					close;
+					
+				case 2:
+					mes "You can not start a war with your guild.";
+					close;	
+					
+				case 3:
+					mes "You can not start a war at WoE time.";
+					close;
+
+				case 4:
+					mes "The war has already been declared.";
+					close;
+					
+				case 5:
+					mes "Too many alliances.";
+					close;
+					
+				case 6:
+					mes "At the moment, you can not start a war.";
+					close;
+					
+				default:
+					mes "An error has occurred, please try later.";
+					close;
+			}
+			close;
+
+		case 3:
+			if (strcharinfo(0) != getguildmaster(.@guild_id)) {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "Available only for Guild Master.";
+				close;
+			}
+			guildwarinfo(.@guild_id);
+
+			.@count = $@guildwarcount;
+			
+			if (!.@count) {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "You are not at war with other guilds.";
+				close;
+			}
+			
+			copyarray .@war_guild_id[0], $@guildwarid[0], .@count;
+			copyarray .@war_guild_name$[0], $@guildwarname$[0], .@count;
+
+			for (.@i = 0; .@i < .@count; .@i++) {
+				.@select$ = .@select$ + "^FF3366" + .@war_guild_name$[.@i] + "^000000:";
+			}
+		
+			mes "[" + strnpcinfo(0) + "]";
+			mes "Choose a guild which is necessary to stop the war:";
+			.@s = select(.@select$ + "Cancel");
+			
+			if (.@s <= .@count) {
+				next;
+				mes "[" + strnpcinfo(0) + "]";
+				mes "Are you sure you want to stop the war? ^FF0000You lose 500 reputation points for each сancelled war!^000000";
+				next;
+				if (select("No, keep it:Yes, stop the war") == 2) {
+					if (getguildrep(.@guild_id) < 500) {
+						mes "[" + strnpcinfo(0) + "]";
+						mes "Dont't have enough reputation guild points.";
+						close;
+					}
+					guildstopwar(.@war_guild_id[.@s - 1]);
+
+					mes "[" + strnpcinfo(0) + "]";
+					mes "You canceled a war with the guild ^FF3366[" + .@war_guild_name$[.@s - 1] + "]^000000";
+					announce "Guild [" + strcharinfo(2) + "] has canceled a war with the guild [" + .@war_guild_name$[.@s - 1] + "].", bc_all, 0x70B8FF;
+				}
+			}
+			close;
+	}
+	end;
+	
+OnReputationSkills:
+	next;
+	.@guild_id = getcharid(2);
+
+	if (strcharinfo(0) != getguildmaster(.@guild_id)) {
+		mes "[" + strnpcinfo(0) + "]";
+		mes "Available only for Guild Master.";
+		close;
+	}
+				
+	setarray .@skill_ids[0], 10030, 10031, 10032, 10033, 10034, 10035, 10036, 10037, 10038, 10039, 10040, 10041, 10042, 10043, 10044, 10045, 10046, 10047, 10048;
+		
+	for (.@i = 0; .@i < getarraysize(.@skill_ids); .@i++) {
+		.@skill_lv = getgdskilllv(.@guild_id, .@skill_ids[.@i]);
+		
+		.@skill_max = getgdskillmax(.@skill_ids[.@i]) > .@skill_lv ? 0 : 1;
+		
+		if (.@skill_ids[.@i] < 10047)
+			.@skill_name$ = getrepskillname(.@skill_ids[.@i]);
+		else
+			.@skill_name$ = "^FF9900" + getrepskillname(.@skill_ids[.@i]) + "^000000";
+		
+		if (.@skill_lv > 0)
+			.@menu$ += "" + .@skill_name$ + " - ^208000Level " + .@skill_lv + (.@skill_max ? " (MAX)" : "") + "^000000:";
+		else
+			.@menu$ += "" + .@skill_name$ + " - ^FF3366Level 0^000000:";
+	}
+	
+	mes "[" + strnpcinfo(0) + "]";
+	mes "Select a skill:";
+	
+	.@s = select(.@menu$);
+
+	mes "What would you like to do?";
+	next;
+	
+	switch (select("Increase skill level:View skill description")) {
+		// Increase skill level
+		case 1:
+			.@skill_id = .@skill_ids[.@s - 1];
+			.@skill_lv = getgdskilllv(.@guild_id, .@skill_id);
+			.@max_lv = getgdskillmax(.@skill_id);
+			
+			if (.@skill_lv >= .@max_lv) {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "The maximum level of skill obtained";
+				
+				callsub OnOtherSkills;
+			}
+			
+			.@next_skill_lv = .@skill_lv + 1;
+			.@guild_lv = 0;
+			.@rep = 0;
+			.@item_id = 0;
+			.@item_amount = 0;
+			.@zeny = 0;
+			
+			/*
+			Считаем формулу получения репутации:
+			Максимальное количество народу в гильдии: 50
+
+
+			Репутация начисляется:
+			- Обычный MvP: +10 очков репутации
+			- Сильный MvP: +25 очков репутации
+			- Эпик MvP: +250 очков репутации
+
+			Дейлики олимпиады:
+			- 2-5-10 боев:
+			2 боя: +5 очков репутации
+			5 боев: +10 очков репутации
+			10 боев: +20 очков репутации
+
+			- 5-10 побед:
+			2 победы: +5 очков репутации
+			5 побед: +10 очков репутации
+			10 побед: +20 очков репутации
+
+			Замок ВоЕ:
+			+5000 очков репутации
+			*/
+
+			switch (.@skill_id) {
+				case 10030: //Guild Resistance
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+					
+				case 10031: // Guild Body
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10032: // Guild Soul
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10033: // Guild Defense
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10034: // Guild Magic Power
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10035: // Guild Physical Power
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10036: // Guild Speed
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10037: // Guild Regeneration
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10038: // Magic Defense
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10039: // Critical
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10040: // Evasion
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10041: // Spirituality
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10042: // Range Protection
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10043: // Sanctuary
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10044: // Rich
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10045: // Exp
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10046: // Human Protection
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 5000;	.@zeny = 10000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 2: .@guild_lv = 2;	.@rep = 15000;	.@zeny = 30000000;	.@item_id = 0;	.@item_amount = 0;	break;
+						case 3: .@guild_lv = 3;	.@rep = 30000;	.@zeny = 50000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10047: // Perfection
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 950000;	.@zeny = 150000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+
+				case 10048: // Revive
+					switch (.@next_skill_lv) {
+						case 1: .@guild_lv = 1;	.@rep = 950000;	.@zeny = 150000000;	.@item_id = 0;	.@item_amount = 0;	break;
+					}
+					break;
+			}
+			
+			if (.@item_id || .@rep || .@zeny || .@guild_lv) {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "To increase the skill level you need:";
+				if (.@guild_lv)
+					mes (getguildlevel(.@guild_id) < .@guild_lv ? "^FF668C" : "^208000") + "   Guild Level: " + .@guild_lv + "^000000";
+				if (.@item_id)
+					mes (countitem(.@item_id) < .@item_amount ? "^FF668C" : "^208000") + "   " + getitemname(.@item_id) + ": " + .@item_amount + "^000000";
+				if (.@rep)
+					mes (getguildrep(.@guild_id) < .@rep ? "^FF668C" : "^208000") + "   Guild Reputation: " + .@rep + "^000000";
+				if (.@zeny)
+					mes (Zeny < .@zeny ? "^FF668C" : "^208000") + "   Zeny: " + .@zeny + "^000000";
+				next;
+			}
+			
+			mes "[" + strnpcinfo(0) + "]";
+			mes "You want to increase skill level?";
+			next;
+			if (select("Yes, increase.:No, stop.") == 1) {
+				if (.@guild_lv)
+					if (getguildlevel(.@guild_id) < .@guild_lv) {
+						mes "[" + strnpcinfo(0) + "]";
+						mes "Guild level is too low";
+
+						callsub OnOtherSkills;
+					}
+				if (.@item_id)
+					if (countitem(.@item_id) < .@item_amount) {
+						mes "[" + strnpcinfo(0) + "]";
+						mes "Not enough items!";
+
+						callsub OnOtherSkills;
+					}
+				if (.@rep)
+					if (getguildrep(.@guild_id) < .@rep) {
+						mes "[" + strnpcinfo(0) + "]";
+						mes "Not enough reputations points!";
+						
+						callsub OnOtherSkills;
+					}
+				if (.@zeny)
+					if (Zeny < .@zeny) {
+						mes "[" + strnpcinfo(0) + "]";
+						mes "Not enough Zeny!";
+						
+						callsub OnOtherSkills;
+					}
+
+				if (.@item_id)
+					delitem(.@item_id, .@item_amount);
+				if (.@rep)
+					addguildrep(.@guild_id, -.@rep);
+				if (.@zeny)
+					Zeny = Zeny - .@zeny;
+				
+				guildskill(.@skill_id, 1);
+
+				mes "[" + strnpcinfo(0) + "]";
+				mes "Done!";
+				
+				callsub OnOtherSkills;
+			}
+			else {
+				mes "[" + strnpcinfo(0) + "]";
+				mes "Bye";
+				
+				callsub OnOtherSkills;
+			}
+			break;
+			
+		// View skill description
+		case 2:
+			mes "[" + strnpcinfo(0) + "]";
+			.@skill_id = .@skill_ids[.@s - 1];
+			mes "Skill: ^FF0000" + getrepskillname(.@skill_id) + "^000000";
+			for (.@i = 0; .@i < getgdskillmax(.@skill_id); .@i++) {
+				.@skill_lv = .@i + 1;
+				mes "^0000FFLevel " + .@skill_lv + "^000000";
+				mes getrepskilldesc(.@skill_id, .@skill_lv);
+			}
+			
+			callsub OnOtherSkills;
+			break;
+	}
+	end;
+	
+OnOtherSkills:
+	next;
+	mes "[" + strnpcinfo(0) + "]";
+	mes "View a list of skills?";
+	if (select("Yes:No") == 1)
+		callsub OnReputationSkills;
+	else
+		close;
+	end;
+	
+OnChangeGuildLeader:
+	next;
+	.@guild_id = getcharid(2);
+	
+	if (strcharinfo(0) != getguildmaster(.@guild_id)) {
+		mes "[" + strnpcinfo(0) + "]";
+		mes "Available only for Guild Master.";
+		close;
+	}
+	
+	mes "[" + strnpcinfo(0) + "]";
+	mes "^FF0000This service costs 500 guild reputation points.^000000";
+	next;
+	mes "[" + strnpcinfo(0) + "]";
+	mes "Specify the name of the new leader of the guild";
+	input .@name$;
+	next;
+	if (getstrlen(.@name$) == 0 || getstrlen(.@name$) > 24) {
+		mes "[" + strnpcinfo(0) + "]";
+		mes "Wrong player name.";
+		close;
+	}
+	else if (getguildrep(.@guild_id) < 500) {
+		mes "[" + strnpcinfo(0) + "]";
+		mes "Not enough reputations points.";
+		close;
+	}
+	else if (guildchangegm(.@guild_id, .@name$)) {
+		mes "[" + strnpcinfo(0) + "]";
+		mes "Guild leader changed!";
+		addguildrep(.@guild_id, -500);
+		close;
+	}
+	else {
+		mes "[" + strnpcinfo(0) + "]";
+		mes "An error occurred while changing the guild leader.";
+		close;
+	}
+	end;
+
+OnGuildFaq:
+	next;
+
+	switch (select("About reputation points:About guild wars:About reputations skills")) {
+		case 1:
+			mes "[" + strnpcinfo(0) + "]";
+			mes "Guild receives reputation points for:";
+			mes "Killing normal MvP: ^FF3366+10 points^000000";
+			mes "Killing strong MvP: ^FF3366+25 points^000000";
+			mes "Killing epic MvP: ^FF3366+250 points^000000";
+			next;
+			mes "[" + strnpcinfo(0) + "]";
+			mes "Guild receives reputation points for:";
+			mes "Daily Olympiad Quests: ^FF3366+5/10/20 points^000000";
+			mes "Capture and hold WoE castle: ^FF3366+5000 points^000000";
+			mes "Killing members of the enemy guild: ^FF3366+1 point per kill^000000";
+			next;
+			mes "[" + strnpcinfo(0) + "]";
+			mes "You can check the number of reputation points";
+			mes "Through the manager of the guild in the Prontera";
+			mes "You'll find the manager at ^FF3366124,67 Prontera^000000";
+			close;
+		case 2:
+			mes "[" + strnpcinfo(0) + "]";
+			mes "You can start a war with any guild.";
+			mes "Use Manager to start the war.";
+			next;
+			mes "[" + strnpcinfo(0) + "]";
+			mes "After the declaration of war, ^FF3366you are free to kill the enemy guild members^000000";
+			mes "At all locations outside of the cities.";
+			close;
+		case 3:
+			mes "[" + strnpcinfo(0) + "]";
+			mes "Guild leader can use reputation points to study special guild skills.";
+			mes "List available for study skills can be found at the manager.";
+			next;
+			mes "[" + strnpcinfo(0) + "]";
+			mes "Each skill is required to obtain the reputation of the guild and zen.";
+			mes "^FF3366Maximum skill level: 3^000000";
+			next;
+			mes "[" + strnpcinfo(0) + "]";
+			mes "All skills are passive and work only for guild members.";
+			mes "Reputation points guild members come to the balance of the guild.";
+			close;
+	}
+	end;
+}

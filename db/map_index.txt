@@ -1003,3 +1003,11 @@ c_tower3_
 //
 //mymap	1250
 //mymap-2
+
+1@lab
+1@raid
+
+arena_1
+arena_2
+arena_3
+arena_4

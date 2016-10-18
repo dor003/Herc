@@ -1272,3 +1272,22 @@
 10013,0,0,4,0,0x3,0,1,0,yes,0,0x10,0,none,0,	GD_EMERGENCYCALL,Urgent Call
 10014,0,0,0,0,0,0,1,0,no,0,0x10,0,none,0,	GD_DEVELOPMENT,Permanent Development
 //10015,0,0,0,0,0,0,1,0,no,0,0x10,0,none,0,	GD_ITEMEMERGENCYCALL,Unknown Skill
+10030,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPRESISTANCE,Guild Resistance
+10031,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPBODY,Guild Body
+10032,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPSOUL,Guild Soul
+10033,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPDEFENSE,Guild Defense
+10034,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPMAGICPOWER,Guild Magic Power
+10035,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPPHYSICALPOWER,Guild Physical Power
+10036,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPSPEED,Guild Speed
+10037,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPREGENERATION,Guild Regeneration
+10038,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPMAGICDEFENSE,Guild Magic Defense
+10039,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPCRITICAL,Guild Critical
+10040,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPEVASION,Guild Evasion
+10041,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPSPIRITUALITY,Guild Spirituality
+10042,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPRANGEPROTECTION,Guild Range Protection
+10043,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPSANCTUARY,Guild Sanctuary
+10044,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPRICH,Guild Rich
+10045,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPEXP,Guild Exp
+10046,0,0,0,0,0,0,3,0,no,0,0x10,0,none,0,	GD_REPHUMANPROTECTION,Guild Human Protection
+10047,0,0,0,0,0,0,1,0,no,0,0x10,0,none,0,	GD_REPPERFECTION,Guild Perfection
+10048,0,0,0,0,0,0,1,0,no,0,0x10,0,none,0,	GD_REPREVIVE,Guild Revive

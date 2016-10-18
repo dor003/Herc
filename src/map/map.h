@@ -231,6 +231,8 @@ enum {
 #define map_flag_gvg2(m) (map->list[m].flag.gvg || map->list[m].flag.gvg_castle)
 // No Kill Steal Protection
 #define map_flag_ks(m) (map->list[m].flag.town || map->list[m].flag.pvp || map->list[m].flag.gvg || map->list[m].flag.battleground)
+// Dess - Olympiad
+#define map_olympiad(m) (strstr(map->list[m].zone->name, MAP_ZONE_OLYMPIAD_NAME) != NULL)
 
 //This stackable implementation does not means a BL can be more than one type at a time, but it's
 // meant to make it easier to check for multiple types at a time on invocations such as map_foreach* calls [Skotlex]
@@ -554,6 +556,7 @@ struct map_zone_skill_damage_cap_entry {
 #define MAP_ZONE_BG_NAME "Battlegrounds"
 #define MAP_ZONE_PK_NAME "PK Mode"
 #define MAP_ZONE_MAPFLAG_LENGTH 50
+#define MAP_ZONE_OLYMPIAD_NAME "Olympiad" // Dess - Olympiad
 
 struct map_zone_data {
 	char name[MAP_ZONE_NAME_LENGTH];/* 20'd */
@@ -667,6 +670,7 @@ struct map_data {
 		unsigned noknockback : 1;
 		unsigned notomb : 1;
 		unsigned nocashshop : 1;
+		unsigned noguildwar : 1; // Dess - Guild Wars
 	} flag;
 	struct point save;
 	struct npc_data *npc[MAX_NPC_PER_MAP];
@@ -712,6 +716,8 @@ struct map_data {
 	unsigned short short_damage_rate;
 	/* long_damage_rate mapflag */
 	unsigned short long_damage_rate;
+	
+	unsigned short ip_restriction; // Dess - IP Restriction
 
 	bool custom_name; ///< Whether the instanced map is using a custom name
 

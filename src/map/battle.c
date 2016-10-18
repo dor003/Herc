@@ -3268,6 +3268,14 @@ int64 battle_calc_damage(struct block_list *src,struct block_list *bl,struct Dam
 			if( element == ELE_FIRE || element == ELE_WATER )
 				pc->overheat(sd,element == ELE_FIRE ? 1 : -1);
 		}
+		
+		// Dess - Olympiad
+		if (map_olympiad(src->m)) {
+			if (src && src->type == BL_PC)
+				((TBL_PC*)src)->olympiad_damage += damage;
+			else if (src && src->type == BL_HOM)
+				((TBL_HOM*)src)->master->olympiad_damage += damage;
+		}
 	}
 
 	return damage;
@@ -5470,7 +5478,7 @@ struct Damage battle_calc_weapon_attack(struct block_list *src,struct block_list
 			if (map_flag_gvg2(target->m))
 				wd.damage2 = battle->calc_gvg_damage(src, target, wd.damage2, wd.div_, skill_id, skill_lv, wd.flag);
 			else if (map->list[target->m].flag.battleground)
-				wd.damage = battle->calc_bg_damage(src, target, wd.damage2, wd.div_, skill_id, skill_lv, wd.flag);
+				wd.damage = battle->calc_bg_damage(src, target, wd.damage2, wd.div_, skill_id, skill_lv, wd.flag);	
 		} else {
 #ifdef RENEWAL
 			if( skill_id != ASC_BREAKER ){
@@ -5484,7 +5492,7 @@ struct Damage battle_calc_weapon_attack(struct block_list *src,struct block_list
 			if( map_flag_gvg2(target->m) )
 				wd.damage = battle->calc_gvg_damage(src,target,wd.damage,wd.div_,skill_id,skill_lv,wd.flag);
 			else if( map->list[target->m].flag.battleground )
-				wd.damage = battle->calc_bg_damage(src,target,wd.damage,wd.div_,skill_id,skill_lv,wd.flag);
+				wd.damage = battle->calc_bg_damage(src,target,wd.damage,wd.div_,skill_id,skill_lv,wd.flag);	
 #ifndef RENEWAL
 			wd.damage2 = d2*100/d1 * wd.damage/100;
 			if(wd.damage > 1 && wd.damage2 < 1) wd.damage2 = 1;
@@ -5587,6 +5595,15 @@ struct Damage battle_calc_attack(int attack_type,struct block_list *bl,struct bl
 			|| (d.flag&sd->bonus.sp_vanish_trigger&BF_SKILLMASK) ))
 			status_percent_damage(&sd->bl,target,0,-sd->bonus.sp_vanish_per,false);
 	}
+
+	// Dess - Guild Wars
+	if (bl->type == BL_PC && target->type == BL_PC && guild->check_war(status->get_guild_id(bl), status->get_guild_id(target)) && !map->list[bl->m].flag.noguildwar && !map->list[bl->m].flag.pvp && !map->list[bl->m].flag.battleground && !map->list[bl->m].flag.gvg) {
+		TBL_PC* sd = (TBL_PC*)bl;
+		TBL_PC* tsd = (TBL_PC*)target;
+		sd->war_lasthit_tick = timer->gettick();
+		tsd->war_lasthit_tick = timer->gettick();
+	}
+	
 	return d;
 }
 //Performs reflect damage (magic (maya) is performed over skill.c).
@@ -5630,6 +5647,11 @@ void battle_reflect_damage(struct block_list *target, struct block_list *src, st
 				status->damage(src, target, status->damage(target, src, rdamage, 0, 0, 1)/10, 0, 0, 1);
 				status_change_end(target, SC_CRESCENTELBOW, INVALID_TIMER);
 				/* shouldn't this trigger skill->additional_effect? */
+				
+				// Dess - Olympiad
+				if (tsd && map_olympiad(tsd->bl.m))
+					tsd->olympiad_damage += rdamage;
+
 				return; // Just put here to minimize redundancy
 			}
 		}
@@ -5778,6 +5800,10 @@ void battle_reflect_damage(struct block_list *target, struct block_list *src, st
 	if( trdamage ) {
 		skill->additional_effect(target, src, CR_REFLECTSHIELD, 1, BF_WEAPON|BF_SHORT|BF_NORMAL,ATK_DEF,tick);
 	}
+	
+	// Dess - Olympiad
+	if (tsd && map_olympiad(tsd->bl.m))
+		tsd->olympiad_damage += rdamage; 
 
 	return;
 #undef NORMALIZE_RDAMAGE
@@ -6636,6 +6662,16 @@ int battle_check_target( struct block_list *src, struct block_list *target,int f
 		}
 	} //end non pvp/gvg chk rivality
 
+	// Dess - Guild Wars
+	int party_id = status->get_party_id(s_bl);
+	int party_id2 = status->get_party_id(t_bl);
+
+	if (guild->check_war(status->get_guild_id(s_bl), status->get_guild_id(t_bl)) && !(party_id && party_id == party_id2) && !map->list[t_bl->m].flag.noguildwar && !map->list[t_bl->m].flag.town && !map->list[t_bl->m].flag.battleground) {
+		state |= BCT_ENEMY;
+		strip_enemy = 0;
+	}
+	//
+	
 	if( !state ) //If not an enemy, nor a guild, nor party, nor yourself, it's neutral.
 		state = BCT_NEUTRAL;
 	//Alliance state takes precedence over enemy one.
