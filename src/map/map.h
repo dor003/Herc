@@ -1,25 +1,43 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2016  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef MAP_MAP_H
 #define MAP_MAP_H
 
-#include "../config/core.h"
+#include "map/atcommand.h"
+#include "common/hercules.h"
+#include "common/core.h" // CORE_ST_LAST
+#include "common/db.h"
+#include "common/mapindex.h"
+#include "common/mmo.h"
 
+#include <stdio.h>
 #include <stdarg.h>
 
-#include "atcommand.h"
-#include "../common/cbasetypes.h"
-#include "../common/core.h" // CORE_ST_LAST
-#include "../common/db.h"
-#include "../common/mapindex.h"
-#include "../common/mmo.h"
-#include "../common/sql.h"
-
+/* Forward Declarations */
+struct Sql; // common/sql.h
+struct config_t; // common/conf.h
 struct mob_data;
 struct npc_data;
 struct channel_data;
+struct hplugin_data_store;
 
 enum E_MAPSERVER_ST {
 	MAPSERVER_ST_RUNNING = CORE_ST_LAST,
@@ -45,35 +63,6 @@ enum E_MAPSERVER_ST {
 #define BLOCK_SIZE 8
 #define block_free_max 1048576
 #define BL_LIST_MAX 1048576
-
-
-// Added definitions for WoESE objects. [L0ne_W0lf]
-enum MOBID {
-	MOBID_EMPERIUM = 1288,
-	MOBID_TREAS01 = 1324,
-	MOBID_TREAS40 = 1363,
-	MOBID_BARRICADE1 = 1905,
-	MOBID_BARRICADE2,
-	MOBID_GUARIDAN_STONE1,
-	MOBID_GUARIDAN_STONE2,
-	MOBID_FOOD_STOR,
-	MOBID_BLUE_CRYST = 1914,
-	MOBID_PINK_CRYST,
-	MOBID_TREAS41 = 1938,
-	MOBID_TREAS49 = 1946,
-	MOBID_SILVERSNIPER = 2042,
-	MOBID_MAGICDECOY_WIND = 2046,
-};
-
-// The following system marks a different job ID system used by the map server,
-// which makes a lot more sense than the normal one. [Skotlex]
-// These marks the "level" of the job.
-#define JOBL_2_1 0x100 //256
-#define JOBL_2_2 0x200 //512
-#define JOBL_2 0x300
-#define JOBL_UPPER 0x1000 //4096
-#define JOBL_BABY 0x2000  //8192
-#define JOBL_THIRD 0x4000 //16384
 
 // For filtering and quick checking.
 #define MAPID_BASEMASK 0x00ff
@@ -224,13 +213,21 @@ enum {
 #define EVENT_NAME_LENGTH ( NAME_LENGTH * 2 + 3 )
 #define DEFAULT_AUTOSAVE_INTERVAL (5*60*1000)
 // Specifies maps where players may hit each other
-#define map_flag_vs(m) (map->list[m].flag.pvp || map->list[m].flag.gvg_dungeon || map->list[m].flag.gvg || ((map->agit_flag || map->agit2_flag) && map->list[m].flag.gvg_castle) || map->list[m].flag.battleground)
+#define map_flag_vs(m) ( \
+		map->list[m].flag.pvp \
+		|| map->list[m].flag.gvg_dungeon \
+		|| map->list[m].flag.gvg \
+		|| ((map->agit_flag || map->agit2_flag) && map->list[m].flag.gvg_castle) \
+		|| map->list[m].flag.battleground \
+		)
 // Specifies maps that have special GvG/WoE restrictions
 #define map_flag_gvg(m) (map->list[m].flag.gvg || ((map->agit_flag || map->agit2_flag) && map->list[m].flag.gvg_castle))
 // Specifies if the map is tagged as GvG/WoE (regardless of map->agit_flag status)
 #define map_flag_gvg2(m) (map->list[m].flag.gvg || map->list[m].flag.gvg_castle)
 // No Kill Steal Protection
 #define map_flag_ks(m) (map->list[m].flag.town || map->list[m].flag.pvp || map->list[m].flag.gvg || map->list[m].flag.battleground)
+// No ViewID
+#define map_no_view(m, view) (map->list[m].flag.noviewid & (view))
 // Dess - Olympiad
 #define map_olympiad(m) (strstr(map->list[m].zone->name, MAP_ZONE_OLYMPIAD_NAME) != NULL)
 
@@ -257,21 +254,64 @@ enum bl_type {
 
 enum npc_subtype { WARP, SHOP, SCRIPT, CASHSHOP, TOMB };
 
-enum {
-	RC_FORMLESS=0,
-	RC_UNDEAD,
-	RC_BRUTE,
-	RC_PLANT,
-	RC_INSECT,
-	RC_FISH,
-	RC_DEMON,
-	RC_DEMIHUMAN,
-	RC_ANGEL,
-	RC_DRAGON,
-	RC_BOSS,
-	RC_NONBOSS,
-	RC_NONDEMIHUMAN,
-	RC_MAX
+/**
+ * Race type IDs.
+ *
+ * Mostly used by scripts/bonuses.
+ */
+enum Race {
+	// Base Races
+	RC_FORMLESS = 0,  ///< Formless
+	RC_UNDEAD,        ///< Undead
+	RC_BRUTE,         ///< Beast/Brute
+	RC_PLANT,         ///< Plant
+	RC_INSECT,        ///< Insect
+	RC_FISH,          ///< Fish
+	RC_DEMON,         ///< Demon
+	RC_DEMIHUMAN,     ///< Demi-Human (not including Player)
+	RC_ANGEL,         ///< Angel
+	RC_DRAGON,        ///< Dragon
+	RC_PLAYER,        ///< Player
+	// Boss
+	RC_BOSS,          ///< Boss
+	RC_NONBOSS,       ///< Non-boss
+
+	RC_MAX,           // Array size delimiter (keep before the combination races)
+
+	// Combination Races
+	RC_NONDEMIHUMAN,   ///< Every race except Demi-Human (including Player)
+	RC_NONPLAYER,      ///< Every non-player race
+	RC_DEMIPLAYER,     ///< Demi-Human (including Player)
+	RC_NONDEMIPLAYER,  ///< Every race except Demi-Human (and except Player)
+	RC_ALL = 0xFF,     ///< Every race (implemented as equivalent to RC_BOSS and RC_NONBOSS)
+};
+
+/**
+ * Race type bitmasks.
+ *
+ * Used by several bonuses internally, to simplify handling of race combinations.
+ */
+enum RaceMask {
+	RCMASK_NONE      = 0,
+	RCMASK_FORMLESS  = 1<<RC_FORMLESS,
+	RCMASK_UNDEAD    = 1<<RC_UNDEAD,
+	RCMASK_BRUTE     = 1<<RC_BRUTE,
+	RCMASK_PLANT     = 1<<RC_PLANT,
+	RCMASK_INSECT    = 1<<RC_INSECT,
+	RCMASK_FISH      = 1<<RC_FISH,
+	RCMASK_DEMON     = 1<<RC_DEMON,
+	RCMASK_DEMIHUMAN = 1<<RC_DEMIHUMAN,
+	RCMASK_ANGEL     = 1<<RC_ANGEL,
+	RCMASK_DRAGON    = 1<<RC_DRAGON,
+	RCMASK_PLAYER    = 1<<RC_PLAYER,
+	RCMASK_BOSS      = 1<<RC_BOSS,
+	RCMASK_NONBOSS   = 1<<RC_NONBOSS,
+	RCMASK_NONDEMIPLAYER = RCMASK_FORMLESS | RCMASK_UNDEAD | RCMASK_BRUTE | RCMASK_PLANT | RCMASK_INSECT | RCMASK_FISH | RCMASK_DEMON | RCMASK_ANGEL | RCMASK_DRAGON,
+	RCMASK_NONDEMIHUMAN = RCMASK_NONDEMIPLAYER | RCMASK_PLAYER,
+	RCMASK_NONPLAYER    = RCMASK_NONDEMIPLAYER | RCMASK_DEMIHUMAN,
+	RCMASK_DEMIPLAYER   = RCMASK_DEMIHUMAN | RCMASK_PLAYER,
+	RCMASK_ALL          = RCMASK_BOSS | RCMASK_NONBOSS,
+	RCMASK_ANY          = RCMASK_NONPLAYER | RCMASK_PLAYER,
 };
 
 enum {
@@ -282,6 +322,8 @@ enum {
 	RC2_GOLEM,
 	RC2_GUARDIAN,
 	RC2_NINJA,
+	RC2_SCARABA,
+	RC2_TURTLE,
 	RC2_MAX
 };
 
@@ -296,7 +338,8 @@ enum elements {
 	ELE_DARK,
 	ELE_GHOST,
 	ELE_UNDEAD,
-	ELE_MAX
+	ELE_MAX,
+	ELE_ALL = 0xFF
 };
 
 /**
@@ -359,7 +402,7 @@ struct flooritem_data {
 	struct item item_data;
 };
 
-enum status_point_types {
+enum status_point_types { //we better clean up this enum and change it name [Hemagx]
 	SP_SPEED,SP_BASEEXP,SP_JOBEXP,SP_KARMA,SP_MANNER,SP_HP,SP_MAXHP,SP_SP, // 0-7
 	SP_MAXSP,SP_STATUSPOINT,SP_0a,SP_BASELEVEL,SP_SKILLPOINT,SP_STR,SP_AGI,SP_VIT, // 8-15
 	SP_INT,SP_DEX,SP_LUK,SP_CLASS,SP_ZENY,SP_SEX,SP_NEXTBASEEXP,SP_NEXTJOBEXP, // 16-23
@@ -409,7 +452,7 @@ enum status_point_types {
 	SP_WEAPON_ATK,SP_WEAPON_ATK_RATE, // 1081-1082
 	SP_DELAYRATE,SP_HP_DRAIN_RATE_RACE,SP_SP_DRAIN_RATE_RACE, // 1083-1085
 	SP_IGNORE_MDEF_RATE,SP_IGNORE_DEF_RATE,SP_SKILL_HEAL2,SP_ADDEFF_ONSKILL, //1086-1089
-	SP_ADD_HEAL_RATE,SP_ADD_HEAL2_RATE, //1090-1091
+	SP_ADD_HEAL_RATE, SP_ADD_HEAL2_RATE, SP_HP_VANISH_RATE, //1090-1092
 
 	SP_RESTART_FULL_RECOVER=2000,SP_NO_CASTCANCEL,SP_NO_SIZEFIX,SP_NO_MAGIC_DAMAGE,SP_NO_WEAPON_DAMAGE,SP_NO_GEMSTONE, // 2000-2005
 	SP_NO_CASTCANCEL2,SP_NO_MISC_DAMAGE,SP_UNBREAKABLE_WEAPON,SP_UNBREAKABLE_ARMOR, SP_UNBREAKABLE_HELM, // 2006-2010
@@ -427,7 +470,7 @@ enum status_point_types {
 	SP_SKILL_COOLDOWN,SP_SKILL_FIXEDCAST, SP_SKILL_VARIABLECAST, SP_FIXCASTRATE, SP_VARCASTRATE, //2050-2054
 	SP_SKILL_USE_SP,SP_MAGIC_ATK_ELE, SP_ADD_FIXEDCAST, SP_ADD_VARIABLECAST,  //2055-2058
 	SP_SET_DEF_RACE,SP_SET_MDEF_RACE, //2059-2060
-	SP_RACE_TOLERANCE, //2061
+	SP_RACE_TOLERANCE,SP_ADDMAXWEIGHT, //2061-2062
 
 	/* must be the last, plugins add bonuses from this value onwards */
 	SP_LAST_KNOWN,
@@ -447,6 +490,7 @@ enum look {
 	LOOK_BODY,
 	LOOK_FLOOR,
 	LOOK_ROBE,
+	LOOK_BODY2,
 };
 
 // used by map_setcell()
@@ -548,6 +592,12 @@ struct map_zone_skill_damage_cap_entry {
 	enum map_zone_skill_subtype subtype;
 };
 
+enum map_zone_merge_type {
+	MZMT_NORMAL = 0, ///< MZMT_MERGEABLE zones can merge *into* MZMT_NORMAL zones (but not the converse).
+	MZMT_MERGEABLE,  ///< Can merge with other MZMT_MERGEABLE zones and *into* MZMT_NORMAL zones.
+	MZMT_NEVERMERGE, ///< Cannot merge with any zones.
+};
+
 #define MAP_ZONE_NAME_LENGTH 60
 #define MAP_ZONE_ALL_NAME "All"
 #define MAP_ZONE_NORMAL_NAME "Normal"
@@ -560,6 +610,7 @@ struct map_zone_skill_damage_cap_entry {
 
 struct map_zone_data {
 	char name[MAP_ZONE_NAME_LENGTH];/* 20'd */
+	enum map_zone_merge_type merge_type;
 	struct map_zone_disabled_skill_entry **disabled_skills;
 	int disabled_skills_count;
 	int *disabled_items;
@@ -573,7 +624,7 @@ struct map_zone_data {
 	struct map_zone_skill_damage_cap_entry **capped_skills;
 	int capped_skills_count;
 	struct {
-		unsigned int special : 2;/* 1: whether this is a mergeable zone; 2: whether it is a merged zone */
+		unsigned int merged : 1;
 	} info;
 };
 
@@ -670,6 +721,7 @@ struct map_data {
 		unsigned noknockback : 1;
 		unsigned notomb : 1;
 		unsigned nocashshop : 1;
+		uint32 noviewid; ///< noviewid (bitmask - @see enum equip_pos)
 		unsigned noguildwar : 1; // Dess - Guild Wars
 	} flag;
 	struct point save;
@@ -722,7 +774,7 @@ struct map_data {
 	bool custom_name; ///< Whether the instanced map is using a custom name
 
 	/* */
-	int (*getcellp)(struct map_data* m,int16 x,int16 y,cell_chk cellchk);
+	int (*getcellp)(struct map_data* m, const struct block_list *bl, int16 x, int16 y, cell_chk cellchk);
 	void (*setcell) (int16 m, int16 x, int16 y, cell_t cell, bool flag);
 	char *cellPos;
 
@@ -732,10 +784,7 @@ struct map_data {
 
 	/* speeds up clif_updatestatus processing by causing hpmeter to run only when someone with the permission can view it */
 	unsigned short hpmeter_visible;
-
-	/* HPM Custom Struct */
-	struct HPluginData **hdata;
-	unsigned int hdatac;
+	struct hplugin_data_store *hdata; ///< HPM Plugin Data Store
 };
 
 /// Stores information about a remote map (for multi-mapserver setups).
@@ -769,8 +818,6 @@ struct mapit_interface {
 	bool                    (*exists) (struct s_mapiterator* iter);
 };
 
-struct mapit_interface *mapit;
-
 #define mapit_getallusers() (mapit->alloc(MAPIT_NORMAL,BL_PC))
 #define mapit_geteachpc()   (mapit->alloc(MAPIT_NORMAL,BL_PC))
 #define mapit_geteachmob()  (mapit->alloc(MAPIT_NORMAL,BL_MOB))
@@ -789,8 +836,91 @@ typedef struct homun_data       TBL_HOM;
 typedef struct mercenary_data   TBL_MER;
 typedef struct elemental_data   TBL_ELEM;
 
+/**
+ * Casts a block list to a specific type.
+ *
+ * @remark
+ *   The `bl` argument may be evaluated more than once.
+ *
+ * @param type_ The block list type (using symbols from enum bl_type).
+ * @param bl    The source block list to cast.
+ * @return The block list, cast to the correct type.
+ * @retval NULL if bl is the wrong type or NULL.
+ */
 #define BL_CAST(type_, bl) \
-	( ((bl) == (struct block_list*)NULL || (bl)->type != (type_)) ? (T ## type_ *)NULL : (T ## type_ *)(bl) )
+	( ((bl) == (struct block_list *)NULL || (bl)->type != (type_)) ? (T ## type_ *)NULL : (T ## type_ *)(bl) )
+
+/**
+ * Casts a const block list to a specific type.
+ *
+ * @remark
+ *   The `bl` argument may be evaluated more than once.
+ *
+ * @param type_ The block list type (using symbols from enum bl_type).
+ * @param bl    The source block list to cast.
+ * @return The block list, cast to the correct type.
+ * @retval NULL if bl is the wrong type or NULL.
+ */
+#define BL_CCAST(type_, bl) \
+	( ((bl) == (const struct block_list *)NULL || (bl)->type != (type_)) ? (const T ## type_ *)NULL : (const T ## type_ *)(bl) )
+
+/**
+ * Helper function for `BL_UCAST`.
+ *
+ * @warning
+ *   This function shouldn't be called on it own.
+ *
+ * The purpose of this function is to produce a compile-timer error if a non-bl
+ * object is passed to BL_UCAST. It's declared as static inline to let the
+ * compiler optimize out the function call overhead.
+ */
+static inline struct block_list *BL_UCAST_(struct block_list *bl) __attribute__((unused));
+static inline struct block_list *BL_UCAST_(struct block_list *bl)
+{
+	return bl;
+}
+
+/**
+ * Casts a block list to a specific type, without performing any type checks.
+ *
+ * @remark
+ *   The `bl` argument is guaranteed to be evaluated once and only once.
+ *
+ * @param type_ The block list type (using symbols from enum bl_type).
+ * @param bl    The source block list to cast.
+ * @return The block list, cast to the correct type.
+ */
+#define BL_UCAST(type_, bl) \
+	((T ## type_ *)BL_UCAST_(bl))
+
+/**
+ * Helper function for `BL_UCCAST`.
+ *
+ * @warning
+ *   This function shouldn't be called on it own.
+ *
+ * The purpose of this function is to produce a compile-timer error if a non-bl
+ * object is passed to BL_UCAST. It's declared as static inline to let the
+ * compiler optimize out the function call overhead.
+ */
+static inline const struct block_list *BL_UCCAST_(const struct block_list *bl) __attribute__((unused));
+static inline const struct block_list *BL_UCCAST_(const struct block_list *bl)
+{
+	return bl;
+}
+
+/**
+ * Casts a const block list to a specific type, without performing any type checks.
+ *
+ * @remark
+ *   The `bl` argument is guaranteed to be evaluated once and only once.
+ *
+ * @param type_ The block list type (using symbols from enum bl_type).
+ * @param bl    The source block list to cast.
+ * @return The block list, cast to the correct type.
+ */
+#define BL_UCCAST(type_, bl) \
+	((const T ## type_ *)BL_UCCAST_(bl))
 
 struct charid_request {
 	struct charid_request* next;
@@ -844,7 +974,6 @@ struct map_interface {
 	char db_path[256];
 
 	char help_txt[256];
-	char help2_txt[256];
 	char charhelp_txt[256];
 
 	char wisp_server_name[NAME_LENGTH];
@@ -858,17 +987,6 @@ struct map_interface {
 	char *MSG_CONF_NAME;
 	char *GRF_PATH_FILENAME;
 
-	int db_use_sql_item_db;
-	int db_use_sql_mob_db;
-	int db_use_sql_mob_skill_db;
-
-	char item_db_db[32];
-	char item_db2_db[32];
-	char mob_db_db[32];
-	char mob_db2_db[32];
-	char mob_skill_db_db[32];
-	char mob_skill_db2_db[32];
-	char interreg_db[32];
 	char autotrade_merchants_db[32];
 	char autotrade_data_db[32];
 	char npc_market_data_db[32];
@@ -882,9 +1000,9 @@ struct map_interface {
 	char server_id[32];
 	char server_pw[100];
 	char server_db[32];
-	Sql* mysql_handle;
+	struct Sql *mysql_handle;
 
-	int port;
+	uint16 port;
 	int users;
 	int enable_grf; //To enable/disable reading maps from GRF files, bypassing mapcache [blackhole89]
 	bool ip_set;
@@ -892,25 +1010,25 @@ struct map_interface {
 
 	int16 index2mapid[MAX_MAPINDEX];
 	/* */
-	DBMap* id_db;     // int id -> struct block_list*
-	DBMap* pc_db;     // int id -> struct map_session_data*
-	DBMap* mobid_db;  // int id -> struct mob_data*
-	DBMap* bossid_db; // int id -> struct mob_data* (MVP db)
-	DBMap* map_db;    // unsigned int mapindex -> struct map_data_other_server*
-	DBMap* nick_db;   // int char_id -> struct charid2nick* (requested names of offline characters)
-	DBMap* charid_db; // int char_id -> struct map_session_data*
-	DBMap* regen_db;  // int id -> struct block_list* (status_natural_heal processing)
-	DBMap* zone_db;   // string => struct map_zone_data
-	DBMap* iwall_db;
-	/* order respected by map_defaults() in order to zero */
-	/* from block_free until zone_pk */
+	struct DBMap *id_db;     // int id -> struct block_list*
+	struct DBMap *pc_db;     // int id -> struct map_session_data*
+	struct DBMap *mobid_db;  // int id -> struct mob_data*
+	struct DBMap *bossid_db; // int id -> struct mob_data* (MVP db)
+	struct DBMap *map_db;    // unsigned int mapindex -> struct map_data_other_server*
+	struct DBMap *nick_db;   // int char_id -> struct charid2nick* (requested names of offline characters)
+	struct DBMap *charid_db; // int char_id -> struct map_session_data*
+	struct DBMap *regen_db;  // int id -> struct block_list* (status_natural_heal processing)
+	struct DBMap *zone_db;   // string => struct map_zone_data
+	struct DBMap *iwall_db;
 	struct block_list **block_free;
 	int block_free_count, block_free_lock, block_free_list_size;
 	struct block_list **bl_list;
 	int bl_list_count, bl_list_size;
+BEGIN_ZEROED_BLOCK; // This block is zeroed in map_defaults()
 	struct block_list bl_head;
 	struct map_zone_data zone_all;/* used as a base on all maps */
 	struct map_zone_data zone_pk;/* used for (pk_mode) */
+END_ZEROED_BLOCK;
 	/* */
 	struct map_session_data *cpsd;
 	struct map_data *list;
@@ -930,7 +1048,7 @@ struct map_interface {
 	void (*zone_change) (int m, struct map_zone_data *zone, const char* start, const char* buffer, const char* filepath);
 	void (*zone_change2) (int m, struct map_zone_data *zone);
 
-	int (*getcell) (int16 m,int16 x,int16 y,cell_chk cellchk);
+	int (*getcell) (int16 m, const struct block_list *bl, int16 x, int16 y, cell_chk cellchk);
 	void (*setgatcell) (int16 m, int16 x, int16 y, int gat);
 
 	void (*cellfromcache) (struct map_data *m);
@@ -952,7 +1070,7 @@ struct map_interface {
 	// search and creation
 	int (*get_new_object_id) (void);
 	int (*search_freecell) (struct block_list *src, int16 m, int16 *x, int16 *y, int16 rx, int16 ry, int flag);
-	bool (*closest_freecell) (int16 m, int16 *x, int16 *y, int type, int flag);
+	bool (*closest_freecell) (int16 m, const struct block_list *bl, int16 *x, int16 *y, int type, int flag);
 	//
 	int (*quit) (struct map_session_data *sd);
 	// npc
@@ -961,7 +1079,7 @@ struct map_interface {
 	int (*clearflooritem_timer) (int tid, int64 tick, int id, intptr_t data);
 	int (*removemobs_timer) (int tid, int64 tick, int id, intptr_t data);
 	void (*clearflooritem) (struct block_list* bl);
-	int (*addflooritem) (struct item *item_data,int amount,int16 m,int16 x,int16 y,int first_charid,int second_charid,int third_charid,int flags);
+	int (*addflooritem) (const struct block_list *bl, struct item *item_data, int amount, int16 m, int16 x, int16 y, int first_charid, int second_charid, int third_charid, int flags);
 	// player to map session
 	void (*addnickdb) (int charid, const char* nick);
 	void (*delnickdb) (int charid, const char* nick);
@@ -1001,13 +1119,17 @@ struct map_interface {
 	int (*vforeachininstance)(int (*func)(struct block_list*,va_list), int16 instance_id, int type, va_list ap);
 	int (*foreachininstance)(int (*func)(struct block_list*,va_list), int16 instance_id, int type,...);
 
-	struct map_session_data * (*id2sd) (int id);
-	struct mob_data * (*id2md) (int id);
-	struct npc_data * (*id2nd) (int id);
-	struct homun_data* (*id2hd) (int id);
-	struct mercenary_data* (*id2mc) (int id);
-	struct chat_data* (*id2cd) (int id);
-	struct block_list * (*id2bl) (int id);
+	struct map_session_data *(*id2sd) (int id);
+	struct npc_data *(*id2nd) (int id);
+	struct mob_data *(*id2md) (int id);
+	struct flooritem_data *(*id2fi) (int id);
+	struct chat_data *(*id2cd) (int id);
+	struct skill_unit *(*id2su) (int id);
+	struct pet_data *(*id2pd) (int id);
+	struct homun_data *(*id2hd) (int id);
+	struct mercenary_data *(*id2mc) (int id);
+	struct elemental_data *(*id2ed) (int id);
+	struct block_list *(*id2bl) (int id);
 	bool (*blid_exists) (int id);
 	int16 (*mapindex2mapid) (unsigned short map_index);
 	int16 (*mapname2mapid) (const char* name);
@@ -1021,6 +1143,7 @@ struct map_interface {
 	struct map_session_data * (*nick2sd) (const char *nick);
 	struct mob_data * (*getmob_boss) (int16 m);
 	struct mob_data * (*id2boss) (int id);
+	uint32 (*race_id2mask) (int race);
 	// reload config file looking only for npcs
 	void (*reloadnpc) (bool clear);
 
@@ -1030,7 +1153,7 @@ struct map_interface {
 
 	int (*cleanup_sub) (struct block_list *bl, va_list ap);
 
-	int (*delmap) (char* mapname);
+	int (*delmap) (const char *mapname);
 	void (*flags_init) (void);
 
 	bool (*iwall_set) (int16 m, int16 x, int16 y, int size, int8 dir, bool shootable, const char* wall_name);
@@ -1048,19 +1171,19 @@ struct map_interface {
 	void (*do_shutdown) (void);
 
 	int (*freeblock_timer) (int tid, int64 tick, int id, intptr_t data);
-	int (*searchrandfreecell) (int16 m, int16 *x, int16 *y, int stack);
+	int (*searchrandfreecell) (int16 m, const struct block_list *bl, int16 *x, int16 *y, int stack);
 	int (*count_sub) (struct block_list *bl, va_list ap);
-	DBData (*create_charid2nick) (DBKey key, va_list args);
+	struct DBData (*create_charid2nick) (union DBKey key, va_list args);
 	int (*removemobs_sub) (struct block_list *bl, va_list ap);
 	struct mapcell (*gat2cell) (int gat);
 	int (*cell2gat) (struct mapcell cell);
-	int (*getcellp) (struct map_data *m, int16 x, int16 y, cell_chk cellchk);
+	int (*getcellp) (struct map_data *m, const struct block_list *bl, int16 x, int16 y, cell_chk cellchk);
 	void (*setcell) (int16 m, int16 x, int16 y, cell_t cell, bool flag);
-	int (*sub_getcellp) (struct map_data *m, int16 x, int16 y, cell_chk cellchk);
+	int (*sub_getcellp) (struct map_data *m, const struct block_list *bl, int16 x, int16 y, cell_chk cellchk);
 	void (*sub_setcell) (int16 m, int16 x, int16 y, cell_t cell, bool flag);
 	void (*iwall_nextxy) (int16 x, int16 y, int8 dir, int pos, int16 *x1, int16 *y1);
-	DBData (*create_map_data_other_server) (DBKey key, va_list args);
-	int (*eraseallipport_sub) (DBKey key, DBData *data, va_list va);
+	struct DBData (*create_map_data_other_server) (union DBKey key, va_list args);
+	int (*eraseallipport_sub) (union DBKey key, struct DBData *data, va_list va);
 	char* (*init_mapcache) (FILE *fp);
 	int (*readfromcache) (struct map_data *m, char *buffer);
 	int (*addmap) (const char *mapname);
@@ -1070,10 +1193,11 @@ struct map_interface {
 	int (*waterheight) (char *mapname);
 	int (*readgat) (struct map_data *m);
 	int (*readallmaps) (void);
-	int (*config_read) (char *cfgName);
-	int (*config_read_sub) (char *cfgName);
-	void (*reloadnpc_sub) (char *cfgName);
-	int (*inter_config_read) (char *cfgName);
+	bool (*config_read) (const char *filename, bool imported);
+	bool (*read_npclist) (const char *filename, bool imported);
+	bool (*inter_config_read) (const char *filename, bool imported);
+	bool (*inter_config_read_database_names) (const char *filename, const struct config_t *config, bool imported);
+	bool (*inter_config_read_connection) (const char *filename, const struct config_t *config, bool imported);
 	int (*sql_init) (void);
 	int (*sql_close) (void);
 	bool (*zone_mf_cache) (int m, char *flag, char *params);
@@ -1081,9 +1205,9 @@ struct map_interface {
 	unsigned short (*zone_str2skillid) (const char *name);
 	enum bl_type (*zone_bl_type) (const char *entry, enum map_zone_skill_subtype *subtype);
 	void (*read_zone_db) (void);
-	int (*db_final) (DBKey key, DBData *data, va_list ap);
-	int (*nick_db_final) (DBKey key, DBData *data, va_list args);
-	int (*cleanup_db_sub) (DBKey key, DBData *data, va_list va);
+	int (*db_final) (union DBKey key, struct DBData *data, va_list ap);
+	int (*nick_db_final) (union DBKey key, struct DBData *data, va_list args);
+	int (*cleanup_db_sub) (union DBKey key, struct DBData *data, va_list va);
 	int (*abort_sub) (struct map_session_data *sd, va_list ap);
 	void (*update_cell_bl) (struct block_list *bl, bool increase);
 	int (*get_new_bonus_id) (void);
@@ -1093,10 +1217,11 @@ struct map_interface {
 	void (*zone_clear_single) (struct map_zone_data *zone);
 };
 
-struct map_interface *map;
-
 #ifdef HERCULES_CORE
 void map_defaults(void);
 #endif // HERCULES_CORE
+
+HPShared struct mapit_interface *mapit;
+HPShared struct map_interface *map;
 
 #endif /* MAP_MAP_H */

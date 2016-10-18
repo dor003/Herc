@@ -1,40 +1,40 @@
-//===== Hercules Script ======================================
+//================= Hercules Script =======================================
+//=       _   _                     _
+//=      | | | |                   | |
+//=      | |_| | ___ _ __ ___ _   _| | ___  ___
+//=      |  _  |/ _ \ '__/ __| | | | |/ _ \/ __|
+//=      | | | |  __/ | | (__| |_| | |  __/\__ \
+//=      \_| |_/\___|_|  \___|\__,_|_|\___||___/
+//================= License ===============================================
+//= This file is part of Hercules.
+//= http://herc.ws - http://github.com/HerculesWS/Hercules
+//=
+//= Copyright (C) 2012-2015  Hercules Dev Team
+//= Copyright (C)  Euphy
+//= Copyright (C)  Joseph
+//= Copyright (C)  Gepard
+//= Copyright (C)  L0ne_W0lf
+//=
+//= Hercules is free software: you can redistribute it and/or modify
+//= it under the terms of the GNU General Public License as published by
+//= the Free Software Foundation, either version 3 of the License, or
+//= (at your option) any later version.
+//=
+//= This program is distributed in the hope that it will be useful,
+//= but WITHOUT ANY WARRANTY; without even the implied warranty of
+//= MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//= GNU General Public License for more details.
+//=
+//= You should have received a copy of the GNU General Public License
+//= along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//=========================================================================
 //= Endless Tower
-//===== By: ==================================================
-//= L0ne_W0lf
-//===== Current Version: =====================================
-//= 2.4
-//===== Description: =========================================
-//= [Official Conversion]
+//================= Description ===========================================
 //= Endless Tower Memorial Dungeon.
 //= Consists of 101 floors.
-//===== Additional Comments: =================================
-//= 1.0 First version.
-//= 1.1 Removed a disablenpc from #102FShadowDust1. (bugreport:4415)
-//= 1.2 Added ends to several NPCs which would allow you to restart timers.
-//=     Added some missing stopnpctimers to npcs. (bugreport:4418)
-//= 1.3 Fixed a couple copy/paste errors :D I fail. [L0ne_W0lf]
-//      Timer no longer resets when re-entering.
-//= 1.4 Added quest log entries based on iRO. [L0ne_W0lf]
-//=     You may need to update your questid2display.
-//=     Changed White lady spawn to MVP White Lady. (bugreport:4601)
-//= 1.5 Corrected some grammar and typos.
-//= 1.6 Corrected the tower re-entry blocked condition. (bugreport:4677) [L0ne_W0lf]
-//=     Corrected floor 75 warp disabling the wrong NPC. (bugreport:4711)
-//= 1.7 Added missing end's to prevent accidental disabling of
-//=     warps between floors. (bugreport:4623)
-//=     Added missing end's to prevent infinite mobspawn (bugreport:4540)
-//=     Commented out remaining GM-only NPCs. [Gepard]
-//= 1.8 Adjusted Instance Attach Map to Validate ALL Maps, instead of
-//=     only 1@tower -> 5@tower (bugreport:4983)
-//= 1.9 Added 'instance_check_party' command to the script for proper checking if
-//=     the invoking party meets the requirements to join the Memorial Dungeon.
-//= 2.0 Fixed broken else/if chaining. [Joseph]
-//= 2.1 Updated to match latest official script. [Euphy]
-//= 2.2 Instance system rewrite. [Euphy]
-//= 2.3 Added some missing announcements. [Euphy]
-//= 2.4 Added GM management function. [Euphy]
-//============================================================
+//================= Current Version =======================================
+//= 2.4
+//=========================================================================
 
 1@tower	mapflag	src4instance
 2@tower	mapflag	src4instance
@@ -42,9 +42,9 @@
 4@tower	mapflag	src4instance
 5@tower	mapflag	src4instance
 6@tower	mapflag	src4instance
-//============================================================
+
 alberta,214,77,6	script	Captain Janssen	4_M_SEAMAN,{
-	if (checkweight(1201,1) == 0) {
+	if (checkweight(Knife,1) == 0) {
 		mes "^008800Wait here!!";
 		mes "You're carrying too much stuff. Why don't you put some of it away, and then come back.^000000";
 		close;
@@ -54,7 +54,7 @@ alberta,214,77,6	script	Captain Janssen	4_M_SEAMAN,{
 		mes "Sigh... I don't know if I can ever go back to sailing the sea...";
 		close;
 	}
-	.@name$ = strcharinfo(0);
+	.@name$ = strcharinfo(PC_NAME);
 	if (in_102tower == 1) {
 		mes "^0000ffLooking incredibly excited, the old man ran into the marine shop hurriedly ordering goods. You don't have anything better to do, so you decide to ask him why he is in such a rush.^000000";
 		next;
@@ -125,7 +125,7 @@ alberta,214,77,6	script	Captain Janssen	4_M_SEAMAN,{
 		mes "[Captain Janssen]";
 		mes "Shall we leave now?";
 		next;
-		switch(select("Yes, let's go!:No, I'm not quite ready...")) {
+		switch(select("Yes, let's go!", "No, I'm not quite ready...")) {
 		case 1:
 			mes "[Captain Janssen]";
 			mes "Then pull up the anchor, first mate!";
@@ -142,7 +142,7 @@ alberta,214,77,6	script	Captain Janssen	4_M_SEAMAN,{
 		mes "[Captain Janssen]";
 		mes "Well, to travel the ocean again, we need to restock on goods. If you give me 10,000 Zeny, I'll take care of the rest.";
 		next;
-		switch(select("I'll come back later.:Let's go, now!")) {
+		switch(select("I'll come back later.", "Let's go, now!")) {
 		case 1:
 			mes "["+.@name$+"]";
 			mes "I'm sorry, but I don't have that much money. I'll come back when I save enough.";
@@ -175,7 +175,7 @@ alberta,214,77,6	script	Captain Janssen	4_M_SEAMAN,{
 		mes "[Captain Janssen]";
 		mes "Can you donate ^0000ff10,000 Zeny^000000 to me? It's for a cause that's important to me...";
 		next;
-		switch(select("No!:Sure thing.")) {
+		switch(select("No!", "Sure thing.")) {
 		case 1:
 			mes "["+.@name$+"]";
 			mes "I'm sorry, but you've got the wrong person to ask that.";
@@ -209,7 +209,7 @@ alberta,214,77,6	script	Captain Janssen	4_M_SEAMAN,{
 
 e_tower,81,105,0	script	Tower Protection Stone	2_MONEMUS,{
 
-	.@party_id = getcharid(1);
+	.@party_id = getcharid(CHAR_ID_PARTY);
 	.@p_name$ = getpartyname(.@party_id);
 	.@md_name$ = "Endless Tower";
 
@@ -221,15 +221,15 @@ e_tower,81,105,0	script	Tower Protection Stone	2_MONEMUS,{
 		close;
 	}
 	if (!.@etower_timer) {
-		if (getcharid(0) == getpartyleader(.@party_id,2)) {
+		if (getcharid(CHAR_ID_CHAR) == getpartyleader(.@party_id,2)) {
 			mes "Confirmed the party has been made. Would you like to reserve entrance to the Endless Tower?";
 			next;
-			switch(select("Generate dungeon "+.@md_name$+":Enter the dungeon:Return to Alberta:Cancel")) {
+			switch(select("Generate dungeon "+.@md_name$, "Enter the dungeon", "Return to Alberta", "Cancel")) {
 			case 1:
 				.@instance = instance_create(.@md_name$,.@party_id);
 				if (.@instance < 0) {
 					mes "Party Name: "+.@p_name$;
-					mes "Party Leader: "+strcharinfo(0);
+					mes "Party Leader: "+strcharinfo(PC_NAME);
 					mes "^0000ff"+.@md_name$+" ^000000- Reservation Failed!";
 					close;
 				}
@@ -256,7 +256,7 @@ e_tower,81,105,0	script	Tower Protection Stone	2_MONEMUS,{
 				close;
 			}
 		}
-		switch(select("Enter the "+.@md_name$+":Return to Alberta:Cancel")) {
+		switch(select("Enter the "+.@md_name$, "Return to Alberta", "Cancel")) {
 		case 1:
 			callsub L_Enter,1,1,.@md_name$,.@p_name$;
 		case 2:
@@ -267,21 +267,6 @@ e_tower,81,105,0	script	Tower Protection Stone	2_MONEMUS,{
 		case 3:
 			end;
 		}
-	} else if (.@etower_timer == 1) {
-		mes "If you have the dungeon generated already, you can enter it. ";
-		next;
-		switch(select("Enter the "+.@md_name$+":Return to Alberta:Cancel")) {
-		case 1:
-			callsub L_Enter,0,0,.@md_name$,.@p_name$;
-		case 2:
-			mes "I will move you to Alberta.";
-			close2;
-			warp "alberta",223,36;
-			end;
-		case 3:
-			break;
-		}
-		close;
 	} else if (.@etower_timer == 1 && .@etower_timer2 == 2) {
 
 		.@dun_lim_time = etower_timer+604800; // 1 week
@@ -298,6 +283,21 @@ e_tower,81,105,0	script	Tower Protection Stone	2_MONEMUS,{
 		close2;
 		warp "alberta",223,36;
 		end;
+	} else if (.@etower_timer == 1) {
+		mes "If you have the dungeon generated already, you can enter it. ";
+		next;
+		switch(select("Enter the "+.@md_name$, "Return to Alberta", "Cancel")) {
+		case 1:
+			callsub L_Enter,0,0,.@md_name$,.@p_name$;
+		case 2:
+			mes "I will move you to Alberta.";
+			close2;
+			warp "alberta",223,36;
+			end;
+		case 3:
+			break;
+		}
+		close;
 	} else {
 		etower_timer = 0;
 		erasequest 60200;
@@ -312,7 +312,7 @@ L_Enter:
 		mes "The party leader did not generate the dungeon yet.";
 		close;
 	} else {
-		mapannounce "e_tower", strcharinfo(0)+" of the party, " +getarg(3)+", is entering the dungeon, Endless Tower.",bc_map,"0x00ff99",FW_NORMAL,12;
+		mapannounce "e_tower", strcharinfo(PC_NAME)+" of the party, " +getarg(3)+", is entering the dungeon, Endless Tower.",bc_map,"0x00ff99",FW_NORMAL,12;
 		if (getarg(1)) {
 			etower_timer = gettimetick(2);
 			setquest 60200;
@@ -329,7 +329,7 @@ L_Enter:
 e_tower,30,30,2	script	Huge Vortex	CLEAR_NPC,2,2,{
 	end;
 OnTouch:
-	mapannounce "e_tower","[ " + strcharinfo(0) + " ], seems to be engulfed by a huge vortex",bc_map,"0x00ff99",FW_NORMAL,12;
+	mapannounce "e_tower","[ " + strcharinfo(PC_NAME) + " ], seems to be engulfed by a huge vortex",bc_map,"0x00ff99",FW_NORMAL,12;
 	warp "alberta",223,36;
 	end;
 }
@@ -341,7 +341,7 @@ e_tower,1,1,2	script	#102Administrator Mode	CLEAR_NPC,{
 	.@i = callfunc("F_GM_NPC","dmc2008",1);
 	next;
 	if (.@i == 1) {
-		switch(select("Generate Purification Stone:Remove Purification Stone:Cancel")) {
+		switch(select("Generate Purification Stone", "Remove Purification Stone", "Cancel")) {
 		case 1:
 			mes "Create the Purification Stone that stays for 30 minutes.";
 			donpcevent "Purification Stone#et1::OnEnable";
@@ -401,8 +401,7 @@ e_tower,151,185,4	script	Purification Stone#et2	CLEAR_NPC,{
 	end;
 }
 
-// Core Functions
-//============================================================
+//== Core Functions ========================================
 function	script	F_Tower_Monster	{
 
 	.@level = getarg(0);
@@ -1194,8 +1193,7 @@ function	script	F_Tower_Warp	{
 	return;
 }
 
-// Levels 1-25
-//============================================================
+//== Levels 1-25 ===========================================
 1@tower,50,360,0	script	Immortal Brazier#	CLEAR_NPC,{
 	mes "- A Message is Engraved on the Brazier -";
 	mes "The one who scatters the ashes of the darkness in this place shall become one step closer to Nacht Sieger, the Hegemon King of the Darkness...";
@@ -1203,15 +1201,15 @@ function	script	F_Tower_Warp	{
 
 	setarray .@level$[1],"26th","51st","76th";
 	setarray .@map$[1],"2@tower","3@tower","4@tower";
-	.@i = select("26th Level:51st Level:76th Level");
+	.@i = select("26th Level", "51st Level", "76th Level");
 
-	if (countitem(6000) < .@i) {
+	if (countitem(Dark_Ashes) < .@i) {
 		mes "-Warning-";
 		mes "To warp to the "+.@level$[.@i]+" Level, you need "+.@i+" Ashes of the Darkness.";
 		close;
 	}
-	delitem 6000,.@i; //Dark_Ashes
-	mapannounce instance_mapname("1@tower"), strcharinfo(0)+". You will be warped to the "+.@level$[.@i]+" Level.",bc_map,"0x00ff99";
+	delitem Dark_Ashes,.@i;
+	mapannounce instance_mapname("1@tower"), strcharinfo(PC_NAME)+". You will be warped to the "+.@level$[.@i]+" Level.",bc_map,"0x00ff99";
 	warp instance_mapname(.@map$[.@i]),52,354;
 	close;
 
@@ -1256,27 +1254,27 @@ OnTimer5000:
 	end;
 
 OnInstanceInit:
-	disablenpc instance_npcname(strnpcinfo(0));
+	disablenpc instance_npcname(strnpcinfo(NPC_NAME));
 	end;
 
 OnEnable:
-	enablenpc instance_npcname(strnpcinfo(0));
+	enablenpc instance_npcname(strnpcinfo(NPC_NAME));
 	callfunc "F_Tower_Monster",
-		atoi(replacestr(strnpcinfo(0),"FGate102tower","")) + 1,
-		strnpcinfo(4),
-		instance_npcname(strnpcinfo(0))+"::OnMyMobDead";
+		atoi(replacestr(strnpcinfo(NPC_NAME),"FGate102tower","")) + 1,
+		strnpcinfo(NPC_MAP),
+		instance_npcname(strnpcinfo(NPC_NAME))+"::OnMyMobDead";
 	end;
 
 OnTouch_:
 	callfunc "F_Tower_Warp",
-		atoi(replacestr(strnpcinfo(0),"FGate102tower","")) + 1,
-		strnpcinfo(4);
+		atoi(replacestr(strnpcinfo(NPC_NAME),"FGate102tower","")) + 1,
+		strnpcinfo(NPC_MAP);
 	end;
 
 OnMyMobDead:
-	.@map$ = strnpcinfo(4);
-	.@level = atoi(replacestr(strnpcinfo(0),"FGate102tower","")) + 1;
-	.@mob_dead_num = mobcount(.@map$,instance_npcname(strnpcinfo(0))+"::OnMyMobDead");
+	.@map$ = strnpcinfo(NPC_MAP);
+	.@level = atoi(replacestr(strnpcinfo(NPC_NAME),"FGate102tower","")) + 1;
+	.@mob_dead_num = mobcount(.@map$,instance_npcname(strnpcinfo(NPC_NAME))+"::OnMyMobDead");
 	if (.@mob_dead_num < 1) {
 		initnpctimer;
 		//SetItemPartyInMap in_102floor .@level
@@ -1285,8 +1283,8 @@ OnMyMobDead:
 	end;
 
 OnTimer5000:
-	.@level = atoi(replacestr(strnpcinfo(0),"FGate102tower","")) + 1;
-	mapannounce strnpcinfo(4), "All Monsters on the "+callsub(L_Display,.@level)+" Level have been defeated.",bc_map,"0xffff00";
+	.@level = atoi(replacestr(strnpcinfo(NPC_NAME),"FGate102tower","")) + 1;
+	mapannounce strnpcinfo(NPC_MAP), "All Monsters on the "+callsub(L_Display,.@level)+" Level have been defeated.",bc_map,"0xffff00";
 	donpcevent instance_npcname(.@level+"FGate102tower")+"::OnEnable";
 	stopnpctimer;
 	end;
@@ -1336,7 +1334,7 @@ OnEnable:
 	end;
 
 OnTouch_:
-	getitem 6000,1; //Dark_Ashes
+	getitem Dark_Ashes,1;
 	warp instance_mapname("2@tower"),52,354;
 	end;
 
@@ -1401,8 +1399,7 @@ OnTimer120000:
 	close;
 }
 
-// Levels 26-50
-//============================================================
+//== Levels 26-50 ==========================================
 2@tower,29,365,2	script	Immortal Furnace#1	CLEAR_NPC,{
 	end;
 
@@ -1469,7 +1466,7 @@ OnEnable:
 	end;
 
 OnTouch_:
-	getitem 6000,1; //Dark_Ashes
+	getitem Dark_Ashes,1;
 	warp instance_mapname("3@tower"),52,354;
 	end;
 
@@ -1517,8 +1514,7 @@ OnTouch_:
 	close;
 }
 
-// Levels 51-75
-//============================================================
+//== Levels 51-75 ==========================================
 3@tower,29,365,2	script	Immortal Furnace#2	CLEAR_NPC,{
 	end;
 
@@ -1585,7 +1581,7 @@ OnEnable:
 	end;
 
 OnTouch_:
-	getitem 6000,1; //Dark_Ashes
+	getitem Dark_Ashes,1;
 	warp instance_mapname("4@tower"),52,354;
 	end;
 
@@ -1633,8 +1629,7 @@ OnTouch_:
 	close;
 }
 
-// Levels 76-99
-//============================================================
+//== Levels 76-99 ==========================================
 4@tower,29,365,2	script	Immortal Furnace#3	CLEAR_NPC,{
 	end;
 
@@ -1700,7 +1695,7 @@ OnEnable:
 	end;
 
 OnTouch_:
-	getitem 6000,1; //Dark_Ashes
+	getitem Dark_Ashes,1;
 	warp instance_mapname("5@tower"),101,72;
 	end;
 
@@ -1748,8 +1743,7 @@ OnTouch_:
 	close;
 }
 
-// Level 100
-//============================================================
+//== Level 100 =============================================
 5@tower,106,109,2	script	Lucid Crystal#102	CLEAR_NPC,{
 	if (in_102tower < 10) {
 		mes "^0000ffA mysterious voice echoes through the room as you touch the lucid crystal radiating a strong light.^000000";
@@ -1932,8 +1926,7 @@ OnEnable:
 	close;
 }
 
-// Level 101
-//============================================================
+//== Level 101 =============================================
 6@tower,45,89,2	script	Life Spring#1	CLEAR_NPC,{
 	mes "^0066ffYou took a sip of the spring's clear water, and you feel invigorated.^000000";
 	heal (MaxHp-Hp),(MaxSp-Sp);
@@ -2131,7 +2124,7 @@ OnMyMobDead:
 }
 
 6@tower,169,127,2	script	Lost Soul#102	4_M_NFDEADSWDMAN,{
-	if (checkweight(1201,1) == 0) {
+	if (checkweight(Knife,1) == 0) {
 		mes "You're carrying too much stuff. Why don't you put some of it away, and then come back?";
 		close;
 	}
@@ -2141,26 +2134,26 @@ OnMyMobDead:
 	mes "[Lost Souls]";
 	mes "Thank you so much. Now we can escape from this cold and dark place... to heaven.";
 	next;
-	if ((countitem(13412) > 0) && (countitem(13413) > 0)) {
+	if ((countitem(Twin_Edge_B) > 0) && (countitem(Twin_Edge_R) > 0)) {
 		mes "[Lost Souls]";
 		mes "Hey, you have the remnants of Nacht Sieger with you.";
 		next;
 		mes "[Lost Souls]";
 		mes "They may appear to be one-handed swords, but I can put them together to make a two-handed one if you want. That's the only way I can repay you for freeing me.";
 		next;
-		switch(select("Make a Two-Handed Sword.:No, thanks.")) {
+		switch(select("Make a Two-Handed Sword.", "No, thanks.")) {
 		case 1:
 			mes "[Lost Souls]";
 			mes "If it is already upgraded or has a card inside, those effects will be disappear. Is this ok with you?";
 			next;
-			switch(select("It's fine with me. Please make one.:No way!")) {
+			switch(select("It's fine with me. Please make one.", "No way!")) {
 			case 1:
 				mes "[Lost Souls]";
 				mes "Good, then I'll combine these to create a two-handed sword.";
 				next;
-				delitem 13412,1; //Twin_Edge_B
-				delitem 13413,1; //Twin_Edge_R
-				getitem 1185,1; //Violet_Fear
+				delitem Twin_Edge_B,1;
+				delitem Twin_Edge_R,1;
+				getitem Violet_Fear,1;
 				break;
 			case 2:
 				mes "[Lost Souls]";

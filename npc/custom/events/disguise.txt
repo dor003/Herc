@@ -22,7 +22,7 @@ prontera,160,155,4	script	Disguise Event	4_M_NFDEADMAN,{
 		mes .@n$;
 		mes "Select an option.";
 		next;
-		switch(select("Turn ON/OFF Event:Event Settings")) {
+		switch(select("Turn ON/OFF Event", "Event Settings")) {
 		case 1:
 			mes .@n$;
 			if (.EventON) {
@@ -32,7 +32,7 @@ prontera,160,155,4	script	Disguise Event	4_M_NFDEADMAN,{
 				mes "The Event is currently: [^FF0000OFF^000000]";
 				mes "Would you like to turn it ON?";
 			}
-			if(select("Yes:No")==2) close;
+			if(select("Yes", "No")==2) close;
 			if (.EventON) {
 				set .EventON,0; set .Timer,0;
 				setnpctimer 0; stopnpctimer;
@@ -50,7 +50,7 @@ prontera,160,155,4	script	Disguise Event	4_M_NFDEADMAN,{
 			mes .@n$;
 			mes "Pick a setting to modify.";
 			next;
-			switch(select("Monster Display:Number of Rounds:Prize Settings")) {
+			switch(select("Monster Display", "Number of Rounds", "Prize Settings")) {
 			case 1:
 				setarray .@r$[0],"Disguise as all monsters.","Disguise as MVPs only.";
 				mes .@n$;
@@ -104,7 +104,7 @@ prontera,160,155,4	script	Disguise Event	4_M_NFDEADMAN,{
 	mes .@n$;
 	mes "Welcome.";
 	mes "How may I be of assistance?";
-	if(select("Information:Nothing, just passing through.")==2) close;
+	if(select("Information", "Nothing, just passing through.")==2) close;
 	next;
 	mes .@n$;
 	mes "This event is quite simple.";
@@ -133,7 +133,7 @@ OnInit:
 		B_MAGALETA, B_SHECIL, B_KATRINN, B_YGNIZEM, APOCALIPS_H, LADY_TANEE, THANATOS, DETALE, KIEL_, RANDGRIS,
 		GLOOMUNDERNIGHT, KTULLANUX, ATROCE, G_MAGALETA_, IFRIT, FALLINGBISHOP, BEELZEBUB_, GOPINICH, MOROCC_, KUBLIN,
 		S_NYDHOG, BOITATA;
-	if(checkre(0)){
+	if (RENEWAL){
 		setarray .MVP[getarraysize(.MVP)], QUEEN_SCARABA, LOST_DRAGON, LEAK, I_QUEEN_SCARABA;
 	}
 	set .Blacklist$, "1003,1006,1017,1021,1022,1027,1043,1075,1136,1137,1168," +
@@ -233,7 +233,7 @@ iCorrect:
 	deletepset 1;
 	activatepset 1;
 	getitem .Prize,.PrizeAmt;
-	announce strcharinfo(0)+" is correct! I was disguised as: "+$MonsterName$+"",bc_map | bc_blue;
+	announce strcharinfo(PC_NAME)+" is correct! I was disguised as: "+$MonsterName$+"",bc_map | bc_blue;
 	if (.RoundCount>=.Rounds) {
 		setnpcdisplay "Disguise Event", 4_M_NFDEADMAN;
 		set .RoundCount,0; set .Change,0; set .EventON,0;

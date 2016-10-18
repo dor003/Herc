@@ -7,14 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A5296FCD1CAC40CF001ABCAC /* lclif.c in Sources */ = {isa = PBXBuildFile; fileRef = A5296FCA1CAC40CF001ABCAC /* lclif.c */; };
 		A5380CD71856CE3C0090CBC4 /* mapcache.c in Sources */ = {isa = PBXBuildFile; fileRef = A5380CD61856CE3C0090CBC4 /* mapcache.c */; };
 		A5380CD81856CE8A0090CBC4 /* console.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC692185643BB009EB79C /* console.c */; };
 		A5380CD91856CF4A0090CBC4 /* core.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC694185643BB009EB79C /* core.c */; };
 		A5380CDA1856D0650090CBC4 /* socket.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6BA185643BB009EB79C /* socket.c */; };
-		A5380CDB1856D0690090CBC4 /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* malloc.c */; };
+		A5380CDB1856D0690090CBC4 /* memmgr.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* memmgr.c */; };
 		A5467AD31A16FCB4008AFAA6 /* loginif.c in Sources */ = {isa = PBXBuildFile; fileRef = A5467AD11A16FCB4008AFAA6 /* loginif.c */; };
 		A5467AD61A16FCDC008AFAA6 /* mapif.c in Sources */ = {isa = PBXBuildFile; fileRef = A5467AD41A16FCDC008AFAA6 /* mapif.c */; };
 		A5467AD91A16FD08008AFAA6 /* geoip.c in Sources */ = {isa = PBXBuildFile; fileRef = A5467AD71A16FD08008AFAA6 /* geoip.c */; };
+		A55AED781B8153D800149CF8 /* conf.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC690185643BB009EB79C /* conf.c */; };
+		A55AED791B8153EA00149CF8 /* grammar.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC72218564C05009EB79C /* grammar.c */; };
+		A55AED7A1B8153EC00149CF8 /* libconfig.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC72418564C05009EB79C /* libconfig.c */; };
+		A55AED7B1B8153EF00149CF8 /* scanctx.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC72718564C05009EB79C /* scanctx.c */; };
+		A55AED7C1B8153F100149CF8 /* scanner.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC72918564C05009EB79C /* scanner.c */; };
+		A55AED7D1B8153F300149CF8 /* strbuf.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC72B18564C05009EB79C /* strbuf.c */; };
 		A567612D185D11D700997C0D /* nullpo.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6B2185643BB009EB79C /* nullpo.c */; };
 		A56CC68918564387009EB79C /* account_sql.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC68118564387009EB79C /* account_sql.c */; };
 		A56CC68A18564387009EB79C /* ipban_sql.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC68318564387009EB79C /* ipban_sql.c */; };
@@ -44,9 +51,9 @@
 		A56CC6E1185643BB009EB79C /* HPM.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A0185643BB009EB79C /* HPM.c */; };
 		A56CC6E2185643BB009EB79C /* HPM.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A0185643BB009EB79C /* HPM.c */; };
 		A56CC6E3185643BB009EB79C /* HPM.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A0185643BB009EB79C /* HPM.c */; };
-		A56CC6E4185643BB009EB79C /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* malloc.c */; };
-		A56CC6E5185643BB009EB79C /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* malloc.c */; };
-		A56CC6E6185643BB009EB79C /* malloc.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* malloc.c */; };
+		A56CC6E4185643BB009EB79C /* memmgr.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* memmgr.c */; };
+		A56CC6E5185643BB009EB79C /* memmgr.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* memmgr.c */; };
+		A56CC6E6185643BB009EB79C /* memmgr.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A3185643BB009EB79C /* memmgr.c */; };
 		A56CC6E7185643BB009EB79C /* mapindex.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A5185643BB009EB79C /* mapindex.c */; };
 		A56CC6E8185643BB009EB79C /* mapindex.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A5185643BB009EB79C /* mapindex.c */; };
 		A56CC6E9185643BB009EB79C /* mapindex.c in Sources */ = {isa = PBXBuildFile; fileRef = A56CC6A5185643BB009EB79C /* mapindex.c */; };
@@ -212,6 +219,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A5296FCA1CAC40CF001ABCAC /* lclif.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lclif.c; path = src/login/lclif.c; sourceTree = SOURCE_ROOT; };
+		A5296FCB1CAC40CF001ABCAC /* lclif.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lclif.h; path = src/login/lclif.h; sourceTree = SOURCE_ROOT; };
+		A5296FCC1CAC40CF001ABCAC /* lclif.p.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lclif.p.h; path = src/login/lclif.p.h; sourceTree = SOURCE_ROOT; };
 		A5380CCD1856CE180090CBC4 /* mapcache */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = mapcache; sourceTree = BUILT_PRODUCTS_DIR; };
 		A5380CD61856CE3C0090CBC4 /* mapcache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mapcache.c; path = src/tool/mapcache.c; sourceTree = "<group>"; };
 		A5467AD11A16FCB4008AFAA6 /* loginif.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = loginif.c; path = src/char/loginif.c; sourceTree = SOURCE_ROOT; };
@@ -250,8 +260,8 @@
 		A56CC6A0185643BB009EB79C /* HPM.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = HPM.c; path = src/common/HPM.c; sourceTree = "<group>"; };
 		A56CC6A1185643BB009EB79C /* HPM.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HPM.h; path = src/common/HPM.h; sourceTree = "<group>"; };
 		A56CC6A2185643BB009EB79C /* HPMi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HPMi.h; path = src/common/HPMi.h; sourceTree = "<group>"; };
-		A56CC6A3185643BB009EB79C /* malloc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = malloc.c; path = src/common/malloc.c; sourceTree = "<group>"; };
-		A56CC6A4185643BB009EB79C /* malloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = malloc.h; path = src/common/malloc.h; sourceTree = "<group>"; };
+		A56CC6A3185643BB009EB79C /* memmgr.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = memmgr.c; path = src/common/memmgr.c; sourceTree = "<group>"; };
+		A56CC6A4185643BB009EB79C /* memmgr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memmgr.h; path = src/common/memmgr.h; sourceTree = "<group>"; };
 		A56CC6A5185643BB009EB79C /* mapindex.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mapindex.c; path = src/common/mapindex.c; sourceTree = "<group>"; };
 		A56CC6A6185643BB009EB79C /* mapindex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = mapindex.h; path = src/common/mapindex.h; sourceTree = "<group>"; };
 		A56CC6A7185643BB009EB79C /* md5calc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = md5calc.c; path = src/common/md5calc.c; sourceTree = "<group>"; };
@@ -544,6 +554,9 @@
 		A56CC66B18564315009EB79C /* login-server */ = {
 			isa = PBXGroup;
 			children = (
+				A5296FCA1CAC40CF001ABCAC /* lclif.c */,
+				A5296FCB1CAC40CF001ABCAC /* lclif.h */,
+				A5296FCC1CAC40CF001ABCAC /* lclif.p.h */,
 				A5B894A81A03CDD4005AD22E /* HPMlogin.c */,
 				A5B894A91A03CDD4005AD22E /* HPMlogin.h */,
 				A56CC68118564387009EB79C /* account_sql.c */,
@@ -713,8 +726,8 @@
 				A56CC6A0185643BB009EB79C /* HPM.c */,
 				A56CC6A1185643BB009EB79C /* HPM.h */,
 				A56CC6A2185643BB009EB79C /* HPMi.h */,
-				A56CC6A3185643BB009EB79C /* malloc.c */,
-				A56CC6A4185643BB009EB79C /* malloc.h */,
+				A56CC6A3185643BB009EB79C /* memmgr.c */,
+				A56CC6A4185643BB009EB79C /* memmgr.h */,
 				A56CC6A5185643BB009EB79C /* mapindex.c */,
 				A56CC6A6185643BB009EB79C /* mapindex.h */,
 				A56CC6A7185643BB009EB79C /* md5calc.c */,
@@ -1062,8 +1075,8 @@
 		A56CC652185642B4009EB79C /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0610;
-				ORGANIZATIONNAME = hercules.ws;
+				LastUpgradeCheck = 0800;
+				ORGANIZATIONNAME = herc.ws;
 			};
 			buildConfigurationList = A56CC655185642B4009EB79C /* Build configuration list for PBXProject "Hercules" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -1150,6 +1163,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A55AED781B8153D800149CF8 /* conf.c in Sources */,
 				A58A5A1A185800CD0099683E /* strlib.c in Sources */,
 				A5F7946F191CA34E002293AB /* sysinfo.c in Sources */,
 				A5380CD91856CF4A0090CBC4 /* core.c in Sources */,
@@ -1158,10 +1172,15 @@
 				A58A5A19185800C20099683E /* des.c in Sources */,
 				A5380CD71856CE3C0090CBC4 /* mapcache.c in Sources */,
 				A58A5A1B185800E70099683E /* utils.c in Sources */,
+				A55AED7A1B8153EC00149CF8 /* libconfig.c in Sources */,
 				A58A5A18185800B80099683E /* grfio.c in Sources */,
 				A5380CDA1856D0650090CBC4 /* socket.c in Sources */,
+				A55AED7C1B8153F100149CF8 /* scanner.c in Sources */,
 				A58A5A17185800A40099683E /* showmsg.c in Sources */,
-				A5380CDB1856D0690090CBC4 /* malloc.c in Sources */,
+				A5380CDB1856D0690090CBC4 /* memmgr.c in Sources */,
+				A55AED7B1B8153EF00149CF8 /* scanctx.c in Sources */,
+				A55AED791B8153EA00149CF8 /* grammar.c in Sources */,
+				A55AED7D1B8153F300149CF8 /* strbuf.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1177,6 +1196,7 @@
 				A5F7946C191CA34E002293AB /* sysinfo.c in Sources */,
 				A56CC74018564C23009EB79C /* mt19937ar.c in Sources */,
 				A5B894AA1A03CDD4005AD22E /* HPMlogin.c in Sources */,
+				A5296FCD1CAC40CF001ABCAC /* lclif.c in Sources */,
 				A56CC6DE185643BB009EB79C /* grfio.c in Sources */,
 				A56CC68C18564387009EB79C /* loginlog_sql.c in Sources */,
 				A56CC73118564C05009EB79C /* libconfig.c in Sources */,
@@ -1196,7 +1216,7 @@
 				A56CC72E18564C05009EB79C /* grammar.c in Sources */,
 				A56CC705185643BB009EB79C /* socket.c in Sources */,
 				A56CC68918564387009EB79C /* account_sql.c in Sources */,
-				A56CC6E4185643BB009EB79C /* malloc.c in Sources */,
+				A56CC6E4185643BB009EB79C /* memmgr.c in Sources */,
 				A56CC6E1185643BB009EB79C /* HPM.c in Sources */,
 				A56CC6FF185643BB009EB79C /* random.c in Sources */,
 				A56CC73418564C05009EB79C /* scanctx.c in Sources */,
@@ -1229,7 +1249,7 @@
 				A5B894AD1A03CDFA005AD22E /* HPMchar.c in Sources */,
 				A56CC761185657D9009EB79C /* int_homun.c in Sources */,
 				A56CC6FA185643BB009EB79C /* nullpo.c in Sources */,
-				A56CC6E5185643BB009EB79C /* malloc.c in Sources */,
+				A56CC6E5185643BB009EB79C /* memmgr.c in Sources */,
 				A56CC6E2185643BB009EB79C /* HPM.c in Sources */,
 				A56CC765185657D9009EB79C /* int_pet.c in Sources */,
 				A56CC769185657D9009EB79C /* pincode.c in Sources */,
@@ -1302,7 +1322,7 @@
 				A56CC7D318565812009EB79C /* path.c in Sources */,
 				A56CC7C218565812009EB79C /* elemental.c in Sources */,
 				A56CC6FB185643BB009EB79C /* nullpo.c in Sources */,
-				A56CC6E6185643BB009EB79C /* malloc.c in Sources */,
+				A56CC6E6185643BB009EB79C /* memmgr.c in Sources */,
 				A56CC7D418565812009EB79C /* pc_groups.c in Sources */,
 				A56CC6E3185643BB009EB79C /* HPM.c in Sources */,
 				A56CC7DD18565812009EB79C /* trade.c in Sources */,
@@ -1483,12 +1503,18 @@
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)";
 				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_FAST_MATH = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -1501,6 +1527,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_SHADOW = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -1509,13 +1536,14 @@
 					/usr/include,
 					/usr/local/include,
 					/usr/local/include/mysql,
-					3rdparty/mt19937ar,
-					3rdparty/libconfig,
+					3rdparty,
+					src,
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
 					"-DMAXCONN=16384",
 					"-DHAS_TLS",
 					"-DHAVE_SETRLIMIT",
@@ -1547,12 +1575,12 @@
 					"-DHAVE_XLOCALE_H=1",
 					"-DHAVE_LIBZ=1",
 					"-DHAVE_LIBPTHREAD=1",
-					"-DHPMHOOKING_LOGIN",
 				);
 				OTHER_LDFLAGS = (
 					"-lpthread",
 					"-lz",
 					"-lmysqlclient",
+					"-lpcre",
 				);
 				SDKROOT = macosx;
 			};
@@ -1566,19 +1594,25 @@
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)";
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_FAST_MATH = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_STRICT_ALIASING = NO;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_NEWLINE = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_SHADOW = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -1587,13 +1621,14 @@
 					/usr/include,
 					/usr/local/include,
 					/usr/local/include/mysql,
-					3rdparty/mt19937ar,
-					3rdparty/libconfig,
+					3rdparty,
+					src,
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				LLVM_LTO = YES;
 				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
 					"-DMAXCONN=16384",
 					"-DHAS_TLS",
 					"-DHAVE_SETRLIMIT",
@@ -1625,12 +1660,12 @@
 					"-DHAVE_XLOCALE_H=1",
 					"-DHAVE_LIBZ=1",
 					"-DHAVE_LIBPTHREAD=1",
-					"-DHPMHOOKING_LOGIN",
 				);
 				OTHER_LDFLAGS = (
 					"-lpthread",
 					"-lz",
 					"-lmysqlclient",
+					"-lpcre",
 				);
 				SDKROOT = macosx;
 			};
@@ -1700,6 +1735,41 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
+					"-DMAXCONN=16384",
+					"-DHAS_TLS",
+					"-DHAVE_SETRLIMIT",
+					"-DHAVE_STRNLEN",
+					"-DPACKAGE_NAME=\\\"\\\"",
+					"-DPACKAGE_TARNAME=\\\"\\\"",
+					"-DPACKAGE_VERSION=\\\"\\\"",
+					"-DPACKAGE_STRING=\\\"\\\"",
+					"-DPACKAGE_BUGREPORT=\\\"\\\"",
+					"-DPACKAGE_URL=\\\"\\\"",
+					"-DSTDC_HEADERS=1",
+					"-DHAVE_SYS_TYPES_H=1",
+					"-DHAVE_SYS_STAT_H=1",
+					"-DHAVE_STDLIB_H=1",
+					"-DHAVE_STRING_H=1",
+					"-DHAVE_MEMORY_H=1",
+					"-DHAVE_STRINGS_H=1",
+					"-DHAVE_INTTYPES_H=1",
+					"-DHAVE_STDINT_H=1",
+					"-DHAVE_UNISTD_H=1",
+					"-D__EXTENSIONS__=1",
+					"-D_ALL_SOURCE=1",
+					"-D_GNU_SOURCE=1",
+					"-D_POSIX_PTHREAD_SEMANTICS=1",
+					"-D_TANDEM_SOURCE=1",
+					"-DHAVE_USELOCALE=1",
+					"-DHAVE_NEWLOCALE=1",
+					"-DHAVE_FREELOCALE=1",
+					"-DHAVE_XLOCALE_H=1",
+					"-DHAVE_LIBZ=1",
+					"-DHAVE_LIBPTHREAD=1",
+					"-DHPMHOOKING_MAP",
+				);
 				PRODUCT_NAME = HPMHooking_map;
 			};
 			name = Debug;
@@ -1710,6 +1780,41 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/plugins";
 				EXECUTABLE_PREFIX = "";
+				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
+					"-DMAXCONN=16384",
+					"-DHAS_TLS",
+					"-DHAVE_SETRLIMIT",
+					"-DHAVE_STRNLEN",
+					"-DPACKAGE_NAME=\\\"\\\"",
+					"-DPACKAGE_TARNAME=\\\"\\\"",
+					"-DPACKAGE_VERSION=\\\"\\\"",
+					"-DPACKAGE_STRING=\\\"\\\"",
+					"-DPACKAGE_BUGREPORT=\\\"\\\"",
+					"-DPACKAGE_URL=\\\"\\\"",
+					"-DSTDC_HEADERS=1",
+					"-DHAVE_SYS_TYPES_H=1",
+					"-DHAVE_SYS_STAT_H=1",
+					"-DHAVE_STDLIB_H=1",
+					"-DHAVE_STRING_H=1",
+					"-DHAVE_MEMORY_H=1",
+					"-DHAVE_STRINGS_H=1",
+					"-DHAVE_INTTYPES_H=1",
+					"-DHAVE_STDINT_H=1",
+					"-DHAVE_UNISTD_H=1",
+					"-D__EXTENSIONS__=1",
+					"-D_ALL_SOURCE=1",
+					"-D_GNU_SOURCE=1",
+					"-D_POSIX_PTHREAD_SEMANTICS=1",
+					"-D_TANDEM_SOURCE=1",
+					"-DHAVE_USELOCALE=1",
+					"-DHAVE_NEWLOCALE=1",
+					"-DHAVE_FREELOCALE=1",
+					"-DHAVE_XLOCALE_H=1",
+					"-DHAVE_LIBZ=1",
+					"-DHAVE_LIBPTHREAD=1",
+					"-DHPMHOOKING_MAP",
+				);
 				PRODUCT_NAME = HPMHooking_map;
 			};
 			name = Release;
@@ -1772,6 +1877,41 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
+					"-DMAXCONN=16384",
+					"-DHAS_TLS",
+					"-DHAVE_SETRLIMIT",
+					"-DHAVE_STRNLEN",
+					"-DPACKAGE_NAME=\\\"\\\"",
+					"-DPACKAGE_TARNAME=\\\"\\\"",
+					"-DPACKAGE_VERSION=\\\"\\\"",
+					"-DPACKAGE_STRING=\\\"\\\"",
+					"-DPACKAGE_BUGREPORT=\\\"\\\"",
+					"-DPACKAGE_URL=\\\"\\\"",
+					"-DSTDC_HEADERS=1",
+					"-DHAVE_SYS_TYPES_H=1",
+					"-DHAVE_SYS_STAT_H=1",
+					"-DHAVE_STDLIB_H=1",
+					"-DHAVE_STRING_H=1",
+					"-DHAVE_MEMORY_H=1",
+					"-DHAVE_STRINGS_H=1",
+					"-DHAVE_INTTYPES_H=1",
+					"-DHAVE_STDINT_H=1",
+					"-DHAVE_UNISTD_H=1",
+					"-D__EXTENSIONS__=1",
+					"-D_ALL_SOURCE=1",
+					"-D_GNU_SOURCE=1",
+					"-D_POSIX_PTHREAD_SEMANTICS=1",
+					"-D_TANDEM_SOURCE=1",
+					"-DHAVE_USELOCALE=1",
+					"-DHAVE_NEWLOCALE=1",
+					"-DHAVE_FREELOCALE=1",
+					"-DHAVE_XLOCALE_H=1",
+					"-DHAVE_LIBZ=1",
+					"-DHAVE_LIBPTHREAD=1",
+					"-DHPMHOOKING_CHAR",
+				);
 				PRODUCT_NAME = HPMHooking_char;
 			};
 			name = Debug;
@@ -1782,6 +1922,41 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/plugins";
 				EXECUTABLE_PREFIX = "";
+				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
+					"-DMAXCONN=16384",
+					"-DHAS_TLS",
+					"-DHAVE_SETRLIMIT",
+					"-DHAVE_STRNLEN",
+					"-DPACKAGE_NAME=\\\"\\\"",
+					"-DPACKAGE_TARNAME=\\\"\\\"",
+					"-DPACKAGE_VERSION=\\\"\\\"",
+					"-DPACKAGE_STRING=\\\"\\\"",
+					"-DPACKAGE_BUGREPORT=\\\"\\\"",
+					"-DPACKAGE_URL=\\\"\\\"",
+					"-DSTDC_HEADERS=1",
+					"-DHAVE_SYS_TYPES_H=1",
+					"-DHAVE_SYS_STAT_H=1",
+					"-DHAVE_STDLIB_H=1",
+					"-DHAVE_STRING_H=1",
+					"-DHAVE_MEMORY_H=1",
+					"-DHAVE_STRINGS_H=1",
+					"-DHAVE_INTTYPES_H=1",
+					"-DHAVE_STDINT_H=1",
+					"-DHAVE_UNISTD_H=1",
+					"-D__EXTENSIONS__=1",
+					"-D_ALL_SOURCE=1",
+					"-D_GNU_SOURCE=1",
+					"-D_POSIX_PTHREAD_SEMANTICS=1",
+					"-D_TANDEM_SOURCE=1",
+					"-DHAVE_USELOCALE=1",
+					"-DHAVE_NEWLOCALE=1",
+					"-DHAVE_FREELOCALE=1",
+					"-DHAVE_XLOCALE_H=1",
+					"-DHAVE_LIBZ=1",
+					"-DHAVE_LIBPTHREAD=1",
+					"-DHPMHOOKING_CHAR",
+				);
 				PRODUCT_NAME = HPMHooking_char;
 			};
 			name = Release;
@@ -1796,6 +1971,41 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
+					"-DMAXCONN=16384",
+					"-DHAS_TLS",
+					"-DHAVE_SETRLIMIT",
+					"-DHAVE_STRNLEN",
+					"-DPACKAGE_NAME=\\\"\\\"",
+					"-DPACKAGE_TARNAME=\\\"\\\"",
+					"-DPACKAGE_VERSION=\\\"\\\"",
+					"-DPACKAGE_STRING=\\\"\\\"",
+					"-DPACKAGE_BUGREPORT=\\\"\\\"",
+					"-DPACKAGE_URL=\\\"\\\"",
+					"-DSTDC_HEADERS=1",
+					"-DHAVE_SYS_TYPES_H=1",
+					"-DHAVE_SYS_STAT_H=1",
+					"-DHAVE_STDLIB_H=1",
+					"-DHAVE_STRING_H=1",
+					"-DHAVE_MEMORY_H=1",
+					"-DHAVE_STRINGS_H=1",
+					"-DHAVE_INTTYPES_H=1",
+					"-DHAVE_STDINT_H=1",
+					"-DHAVE_UNISTD_H=1",
+					"-D__EXTENSIONS__=1",
+					"-D_ALL_SOURCE=1",
+					"-D_GNU_SOURCE=1",
+					"-D_POSIX_PTHREAD_SEMANTICS=1",
+					"-D_TANDEM_SOURCE=1",
+					"-DHAVE_USELOCALE=1",
+					"-DHAVE_NEWLOCALE=1",
+					"-DHAVE_FREELOCALE=1",
+					"-DHAVE_XLOCALE_H=1",
+					"-DHAVE_LIBZ=1",
+					"-DHAVE_LIBPTHREAD=1",
+					"-DHPMHOOKING_LOGIN",
+				);
 				PRODUCT_NAME = HPMHooking_login;
 			};
 			name = Debug;
@@ -1806,6 +2016,41 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/plugins";
 				EXECUTABLE_PREFIX = "";
+				OTHER_CFLAGS = (
+					"-DHAVE_EXECINFO",
+					"-DMAXCONN=16384",
+					"-DHAS_TLS",
+					"-DHAVE_SETRLIMIT",
+					"-DHAVE_STRNLEN",
+					"-DPACKAGE_NAME=\\\"\\\"",
+					"-DPACKAGE_TARNAME=\\\"\\\"",
+					"-DPACKAGE_VERSION=\\\"\\\"",
+					"-DPACKAGE_STRING=\\\"\\\"",
+					"-DPACKAGE_BUGREPORT=\\\"\\\"",
+					"-DPACKAGE_URL=\\\"\\\"",
+					"-DSTDC_HEADERS=1",
+					"-DHAVE_SYS_TYPES_H=1",
+					"-DHAVE_SYS_STAT_H=1",
+					"-DHAVE_STDLIB_H=1",
+					"-DHAVE_STRING_H=1",
+					"-DHAVE_MEMORY_H=1",
+					"-DHAVE_STRINGS_H=1",
+					"-DHAVE_INTTYPES_H=1",
+					"-DHAVE_STDINT_H=1",
+					"-DHAVE_UNISTD_H=1",
+					"-D__EXTENSIONS__=1",
+					"-D_ALL_SOURCE=1",
+					"-D_GNU_SOURCE=1",
+					"-D_POSIX_PTHREAD_SEMANTICS=1",
+					"-D_TANDEM_SOURCE=1",
+					"-DHAVE_USELOCALE=1",
+					"-DHAVE_NEWLOCALE=1",
+					"-DHAVE_FREELOCALE=1",
+					"-DHAVE_XLOCALE_H=1",
+					"-DHAVE_LIBZ=1",
+					"-DHAVE_LIBPTHREAD=1",
+					"-DHPMHOOKING_LOGIN",
+				);
 				PRODUCT_NAME = HPMHooking_login;
 			};
 			name = Release;

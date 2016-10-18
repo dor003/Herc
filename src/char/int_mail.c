@@ -1,27 +1,44 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "int_mail.h"
 
+#include "char/char.h"
+#include "char/inter.h"
+#include "char/mapif.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h"
+#include "common/timer.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "inter.h"
-#include "mapif.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/sql.h"
-#include "../common/strlib.h"
-#include "../common/timer.h"
 
 struct inter_mail_interface inter_mail_s;
+struct inter_mail_interface *inter_mail;
 
 static int inter_mail_fromsql(int char_id, struct mail_data* md)
 {
@@ -30,6 +47,7 @@ static int inter_mail_fromsql(int char_id, struct mail_data* md)
 	char *data;
 	StringBuf buf;
 
+	nullpo_ret(md);
 	memset(md, 0, sizeof(struct mail_data));
 	md->amount = 0;
 	md->full = false;
@@ -111,15 +129,16 @@ static int inter_mail_fromsql(int char_id, struct mail_data* md)
 int inter_mail_savemessage(struct mail_message* msg)
 {
 	StringBuf buf;
-	SqlStmt* stmt;
+	struct SqlStmt *stmt;
 	int j;
 
+	nullpo_ret(msg);
 	// build message save query
 	StrBuf->Init(&buf);
 	StrBuf->Printf(&buf, "INSERT INTO `%s` (`send_name`, `send_id`, `dest_name`, `dest_id`, `title`, `message`, `time`, `status`, `zeny`, `amount`, `nameid`, `refine`, `attribute`, `identify`, `unique_id`", mail_db);
 	for (j = 0; j < MAX_SLOTS; j++)
 		StrBuf->Printf(&buf, ", `card%d`", j);
-	StrBuf->Printf(&buf, ") VALUES (?, '%d', ?, '%d', ?, ?, '%lu', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%"PRIu64"'",
+	StrBuf->Printf(&buf, ") VALUES (?, '%d', ?, '%d', ?, ?, '%lu', '%u', '%d', '%d', '%d', '%d', '%d', '%d', '%"PRIu64"'",
 		msg->send_id, msg->dest_id, (unsigned long)msg->timestamp, msg->status, msg->zeny, msg->item.amount, msg->item.nameid, msg->item.refine, msg->item.attribute, msg->item.identify, msg->item.unique_id);
 	for (j = 0; j < MAX_SLOTS; j++)
 		StrBuf->Printf(&buf, ", '%d'", msg->item.card[j]);
@@ -151,6 +170,7 @@ static bool inter_mail_loadmessage(int mail_id, struct mail_message* msg)
 {
 	int j;
 	StringBuf buf;
+	nullpo_ret(msg);
 	memset(msg, 0, sizeof(struct mail_message)); // Initialize data
 
 	StrBuf->Init(&buf);
@@ -203,6 +223,7 @@ static bool inter_mail_loadmessage(int mail_id, struct mail_message* msg)
 
 void mapif_mail_sendinbox(int fd, int char_id, unsigned char flag, struct mail_data *md)
 {
+	nullpo_retv(md);
 	//FIXME: dumping the whole structure like this is unsafe [ultramage]
 	WFIFOHEAD(fd, sizeof(struct mail_data) + 9);
 	WFIFOW(fd,0) = 0x3848;
@@ -263,6 +284,7 @@ static bool inter_mail_DeleteAttach(int mail_id)
 
 void mapif_mail_sendattach(int fd, int char_id, struct mail_message *msg)
 {
+	nullpo_retv(msg);
 	WFIFOHEAD(fd, sizeof(struct item) + 12);
 	WFIFOW(fd,0) = 0x384a;
 	WFIFOW(fd,2) = sizeof(struct item) + 12;
@@ -402,6 +424,7 @@ void mapif_mail_send(int fd, struct mail_message* msg)
 {
 	int len = sizeof(struct mail_message) + 4;
 
+	nullpo_retv(msg);
 	WFIFOHEAD(fd,len);
 	WFIFOW(fd,0) = 0x384d;
 	WFIFOW(fd,2) = len;
@@ -449,6 +472,10 @@ void mapif_parse_mail_send(int fd)
 void inter_mail_sendmail(int send_id, const char* send_name, int dest_id, const char* dest_name, const char* title, const char* body, int zeny, struct item *item)
 {
 	struct mail_message msg;
+	nullpo_retv(send_name);
+	nullpo_retv(dest_name);
+	nullpo_retv(title);
+	nullpo_retv(body);
 	memset(&msg, 0, sizeof(struct mail_message));
 
 	msg.send_id = send_id;

@@ -1,47 +1,64 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "elemental.h"
+
+#include "map/atcommand.h"
+#include "map/battle.h"
+#include "map/chrif.h"
+#include "map/clif.h"
+#include "map/guild.h"
+#include "map/intif.h"
+#include "map/itemdb.h"
+#include "map/log.h"
+#include "map/map.h"
+#include "map/mob.h"
+#include "map/npc.h"
+#include "map/party.h"
+#include "map/pc.h"
+#include "map/pet.h"
+#include "map/script.h"
+#include "map/skill.h"
+#include "map/status.h"
+#include "map/trade.h"
+#include "map/unit.h"
+#include "common/cbasetypes.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/random.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/strlib.h"
+#include "common/timer.h"
+#include "common/utils.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "atcommand.h"
-#include "battle.h"
-#include "chrif.h"
-#include "clif.h"
-#include "guild.h"
-#include "intif.h"
-#include "itemdb.h"
-#include "log.h"
-#include "map.h"
-#include "mob.h"
-#include "npc.h"
-#include "party.h"
-#include "pc.h"
-#include "pet.h"
-#include "script.h"
-#include "skill.h"
-#include "status.h"
-#include "trade.h"
-#include "unit.h"
-#include "../common/cbasetypes.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/nullpo.h"
-#include "../common/random.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/strlib.h"
-#include "../common/timer.h"
-#include "../common/utils.h"
-
 struct elemental_interface elemental_s;
+struct elemental_interface *elemental;
 
 int elemental_search_index(int class_) {
 	int i;
@@ -104,28 +121,32 @@ int elemental_create(struct map_session_data *sd, int class_, unsigned int lifet
 
 	//per individual bonuses
 	switch(db->class_){
-	case 2114:
-	case 2115:
-	case 2116: //ATK + (Summon Agni Skill Level x 20) / HIT + (Summon Agni Skill Level x 10)
+	case ELEID_EL_AGNI_S:
+	case ELEID_EL_AGNI_M:
+	case ELEID_EL_AGNI_L:
+		//ATK + (Summon Agni Skill Level x 20) / HIT + (Summon Agni Skill Level x 10)
 		ele.atk += summon_level * 20;
 		ele.atk2 += summon_level * 20;
 		ele.hit += summon_level * 10;
 		break;
-	case 2117:
-	case 2118:
-	case 2119: //MDEF + (Summon Aqua Skill Level x 10) / MATK + (Summon Aqua Skill Level x 20)
+	case ELEID_EL_AQUA_S:
+	case ELEID_EL_AQUA_M:
+	case ELEID_EL_AQUA_L:
+		//MDEF + (Summon Aqua Skill Level x 10) / MATK + (Summon Aqua Skill Level x 20)
 		ele.mdef += summon_level * 10;
 		ele.matk += summon_level * 20;
 		break;
-	case 2120:
-	case 2121:
-	case 2122: //FLEE + (Summon Ventus Skill Level x 20) / MATK + (Summon Ventus Skill Level x 10)
+	case ELEID_EL_VENTUS_S:
+	case ELEID_EL_VENTUS_M:
+	case ELEID_EL_VENTUS_L:
+		//FLEE + (Summon Ventus Skill Level x 20) / MATK + (Summon Ventus Skill Level x 10)
 		ele.flee += summon_level * 20;
 		ele.matk += summon_level * 10;
 		break;
-	case 2123:
-	case 2124:
-	case 2125: //DEF + (Summon Tera Skill Level x 25) / ATK + (Summon Tera Skill Level x 5)
+	case ELEID_EL_TERA_S:
+	case ELEID_EL_TERA_M:
+	case ELEID_EL_TERA_L:
+		//DEF + (Summon Tera Skill Level x 25) / ATK + (Summon Tera Skill Level x 5)
 		ele.def += summon_level * 25;
 		ele.atk += summon_level * 5;
 		ele.atk2 += summon_level * 5;
@@ -158,6 +179,7 @@ int elemental_get_lifetime(struct elemental_data *ed) {
 }
 
 int elemental_save(struct elemental_data *ed) {
+	nullpo_retr(1, ed);
 	ed->elemental.mode = ed->battle_status.mode;
 	ed->elemental.hp = ed->battle_status.hp;
 	ed->elemental.sp = ed->battle_status.sp;
@@ -225,18 +247,22 @@ int elemental_delete(struct elemental_data *ed, int reply) {
 }
 
 void elemental_summon_init(struct elemental_data *ed) {
-	if( ed->summon_timer == INVALID_TIMER )
+	nullpo_retv(ed);
+	if (ed->summon_timer == INVALID_TIMER)
 		ed->summon_timer = timer->add(timer->gettick() + ed->elemental.life_time, elemental->summon_end_timer, ed->master->bl.id, 0);
 
 	ed->regen.state.block = 0;
 }
 
-int elemental_data_received(struct s_elemental *ele, bool flag) {
+int elemental_data_received(const struct s_elemental *ele, bool flag)
+{
 	struct map_session_data *sd;
 	struct elemental_data *ed;
 	struct s_elemental_db *db;
-	int i = elemental->search_index(ele->class_);
+	int i;
 
+	nullpo_ret(ele);
+	i = elemental->search_index(ele->class_);
 	if( (sd = map->charid2sd(ele->char_id)) == NULL )
 		return 0;
 
@@ -248,9 +274,10 @@ int elemental_data_received(struct s_elemental *ele, bool flag) {
 	db = &elemental->db[i];
 	if( !sd->ed ) {
 		// Initialize it after first summon.
-		sd->ed = ed = (struct elemental_data*)aCalloc(1,sizeof(struct elemental_data));
+		CREATE(ed, struct elemental_data, 1);
 		ed->bl.type = BL_ELEM;
 		ed->bl.id = npc->get_new_npc_id();
+		sd->ed = ed;
 		ed->master = sd;
 		ed->db = db;
 		memcpy(&ed->elemental, ele, sizeof(struct s_elemental));
@@ -442,9 +469,9 @@ int elemental_action(struct elemental_data *ed, struct block_list *bl, int64 tic
 			ed->ud.skill_lv = skill_lv;
 
 			if( skill->get_inf(skill_id) & INF_GROUND_SKILL )
-				ed->ud.skilltimer = timer->add( tick+status->get_speed(&ed->bl)*walk_dist, skill->castend_pos, ed->bl.id, 0 );
+				ed->ud.skilltimer = timer->add(tick+(int64)status->get_speed(&ed->bl)*walk_dist, skill->castend_pos, ed->bl.id, 0);
 			else
-				ed->ud.skilltimer = timer->add( tick+status->get_speed(&ed->bl)*walk_dist, skill->castend_id, ed->bl.id, 0 );
+				ed->ud.skilltimer = timer->add(tick+(int64)status->get_speed(&ed->bl)*walk_dist, skill->castend_id, ed->bl.id, 0);
 		}
 		return 1;
 
@@ -518,32 +545,43 @@ int elemental_change_mode_ack(struct elemental_data *ed, int mode) {
 	return 1;
 }
 
-/*===============================================================
- * Change elemental mode.
- *-------------------------------------------------------------*/
-int elemental_change_mode(struct elemental_data *ed, int mode) {
+/**
+ * Changes elemental mode.
+ *
+ * @param ed  The elemental data.
+ * @param mode The new mode.
+ * @retval 1 in case of success.
+ */
+int elemental_change_mode(struct elemental_data *ed, uint32 mode)
+{
+	int skillmode = EL_SKILLMODE_PASIVE;
 	nullpo_ret(ed);
 
 	// Remove target
 	elemental->unlocktarget(ed);
 
 	// Removes the effects of the previous mode.
-	if(ed->elemental.mode != mode ) elemental->clean_effect(ed);
+	if (ed->elemental.mode != mode)
+		elemental->clean_effect(ed);
 
 	ed->battle_status.mode = ed->elemental.mode = mode;
 
 	// Normalize elemental mode to elemental skill mode.
-	if( mode == EL_MODE_AGGRESSIVE ) mode = EL_SKILLMODE_AGGRESSIVE; // Aggressive spirit mode -> Aggressive spirit skill.
-	else if( mode == EL_MODE_ASSIST ) mode = EL_SKILLMODE_ASSIST;    // Assist spirit mode -> Assist spirit skill.
-	else mode = EL_SKILLMODE_PASIVE;                                 // Passive spirit mode -> Passive spirit skill.
+	if (mode == EL_MODE_AGGRESSIVE)
+		skillmode = EL_SKILLMODE_AGGRESSIVE; // Aggressive spirit mode -> Aggressive spirit skill.
+	else if (mode == EL_MODE_ASSIST)
+		skillmode = EL_SKILLMODE_ASSIST; // Assist spirit mode -> Assist spirit skill.
+	else
+		skillmode = EL_SKILLMODE_PASIVE; // Passive spirit mode -> Passive spirit skill.
 
 	// Use a skill immediately after every change mode.
-	if( mode != EL_SKILLMODE_AGGRESSIVE )
-		elemental->change_mode_ack(ed,mode);
+	if (skillmode != EL_SKILLMODE_AGGRESSIVE)
+		elemental->change_mode_ack(ed, skillmode);
 	return 1;
 }
 
 void elemental_heal(struct elemental_data *ed, int hp, int sp) {
+	nullpo_retv(ed);
 	if( hp )
 		clif->elemental_updatestatus(ed->master, SP_HP);
 	if( sp )
@@ -560,7 +598,7 @@ int elemental_unlocktarget(struct elemental_data *ed) {
 
 	ed->target_id = 0;
 	elemental_stop_attack(ed);
-	elemental_stop_walking(ed,1);
+	elemental_stop_walking(ed, STOPWALKING_FLAG_FIXPOS);
 	return 0;
 }
 
@@ -586,15 +624,17 @@ struct skill_condition elemental_skill_get_requirements(uint16 skill_id, uint16 
 	if( skill_lv < 1 || skill_lv > MAX_SKILL_LEVEL )
 		return req;
 
-	req.hp = skill->db[idx].hp[skill_lv-1];
-	req.sp = skill->db[idx].sp[skill_lv-1];
+	req.hp = skill->dbs->db[idx].hp[skill_lv-1];
+	req.sp = skill->dbs->db[idx].sp[skill_lv-1];
 
 	return req;
 }
 
 int elemental_set_target( struct map_session_data *sd, struct block_list *bl ) {
-	struct elemental_data *ed = sd->ed;
+	struct elemental_data *ed;
 
+	nullpo_ret(sd);
+	ed = sd->ed;
 	nullpo_ret(ed);
 	nullpo_ret(bl);
 
@@ -618,7 +658,9 @@ int elemental_ai_sub_timer_activesearch(struct block_list *bl, va_list ap) {
 	nullpo_ret(bl);
 
 	ed = va_arg(ap,struct elemental_data *);
+	nullpo_ret(ed);
 	target = va_arg(ap,struct block_list**);
+	nullpo_ret(target);
 
 	//If can't seek yet, not an enemy, or you can't attack it, skip.
 	if( (*target) == bl || !status->check_skilluse(&ed->bl, bl, 0, 0) )
@@ -649,7 +691,8 @@ int elemental_ai_sub_timer_activesearch(struct block_list *bl, va_list ap) {
 
 int elemental_ai_sub_timer(struct elemental_data *ed, struct map_session_data *sd, int64 tick) {
 	struct block_list *target = NULL;
-	int master_dist, view_range, mode;
+	int master_dist, view_range;
+	uint32 mode;
 
 	nullpo_ret(ed);
 	nullpo_ret(sd);
@@ -661,17 +704,17 @@ int elemental_ai_sub_timer(struct elemental_data *ed, struct map_session_data *s
 	if( DIFF_TICK(tick,ed->last_spdrain_time) >= 10000 ){// Drain SP every 10 seconds
 		int sp = 5;
 
-		switch(ed->vd->class_){
-			case 2115:
-			case 2118:
-			case 2121:
-			case 2124:
+		switch (ed->vd->class_) {
+			case ELEID_EL_AGNI_M:
+			case ELEID_EL_AQUA_M:
+			case ELEID_EL_VENTUS_M:
+			case ELEID_EL_TERA_M:
 				sp = 8;
 				break;
-			case 2116:
-			case 2119:
-			case 2122:
-			case 2125:
+			case ELEID_EL_AGNI_L:
+			case ELEID_EL_AQUA_L:
+			case ELEID_EL_VENTUS_L:
+			case ELEID_EL_TERA_L:
 				sp = 11;
 				break;
 		}
@@ -728,7 +771,7 @@ int elemental_ai_sub_timer(struct elemental_data *ed, struct map_session_data *s
 			return 0;
 	}
 
-	if( mode == EL_MODE_AGGRESSIVE ) {
+	if (mode == EL_MODE_AGGRESSIVE) {
 		target = map->id2bl(ed->ud.target);
 
 		if( !target )
@@ -764,6 +807,7 @@ int elemental_ai_sub_timer(struct elemental_data *ed, struct map_session_data *s
 
 int elemental_ai_sub_foreachclient(struct map_session_data *sd, va_list ap) {
 	int64 tick = va_arg(ap,int64);
+	nullpo_ret(sd);
 	if(sd->status.ele_id && sd->ed)
 		elemental->ai_sub_timer(sd->ed,sd,tick);
 
@@ -784,8 +828,8 @@ int read_elementaldb(void) {
 	struct status_data *estatus;
 
 	sprintf(line, "%s/%s", map->db_path, "elemental_db.txt");
-	
-	if( runflag == MAPSERVER_ST_RUNNING ) //only necessary after we're up
+
+	if( core->runflag == MAPSERVER_ST_RUNNING ) //only necessary after we're up
 		memset(elemental->db,0,sizeof(elemental->db));
 
 	fp = fopen(line, "r");
@@ -979,27 +1023,26 @@ void elemental_defaults(void) {
 
 	/* */
 	memset(elemental->db,0,sizeof(elemental->db));
-	
+
 	/* funcs */
-	
 	elemental->class = elemental_class;
 	elemental->get_viewdata = elemental_get_viewdata;
-	
+
 	elemental->create = elemental_create;
 	elemental->data_received = elemental_data_received;
 	elemental->save = elemental_save;
-	
+
 	elemental->change_mode_ack = elemental_change_mode_ack;
 	elemental->change_mode = elemental_change_mode;
-	
+
 	elemental->heal = elemental_heal;
 	elemental->dead = elemental_dead;
-	
+
 	elemental->delete = elemental_delete;
 	elemental->summon_stop = elemental_summon_stop;
-	
+
 	elemental->get_lifetime = elemental_get_lifetime;
-	
+
 	elemental->unlocktarget = elemental_unlocktarget;
 	elemental->skillnotok = elemental_skillnotok;
 	elemental->set_target = elemental_set_target;
@@ -1007,11 +1050,11 @@ void elemental_defaults(void) {
 	elemental->clean_effect = elemental_clean_effect;
 	elemental->action = elemental_action;
 	elemental->skill_get_requirements = elemental_skill_get_requirements;
-	
+
 	elemental->read_skilldb = read_elemental_skilldb;
 	elemental->reload_db = reload_elementaldb;
 	elemental->reload_skilldb = reload_elemental_skilldb;
-	
+
 	elemental->search_index = elemental_search_index;
 	elemental->summon_init = elemental_summon_init;
 	elemental->summon_end_timer = elemental_summon_end_timer;

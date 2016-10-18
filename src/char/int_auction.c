@@ -1,39 +1,57 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "int_auction.h"
 
+#include "char/char.h"
+#include "char/int_mail.h"
+#include "char/inter.h"
+#include "char/mapif.h"
+#include "common/cbasetypes.h"
+#include "common/db.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h"
+#include "common/timer.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "int_mail.h"
-#include "inter.h"
-#include "mapif.h"
-#include "../common/db.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/sql.h"
-#include "../common/strlib.h"
-#include "../common/timer.h"
 
 struct inter_auction_interface inter_auction_s;
+struct inter_auction_interface *inter_auction;
 
 static int inter_auction_count(int char_id, bool buy)
 {
 	int i = 0;
 	struct auction_data *auction;
-	DBIterator *iter = db_iterator(inter_auction->db);
+	struct DBIterator *iter = db_iterator(inter_auction->db);
 
 	for( auction = dbi_first(iter); dbi_exists(iter); auction = dbi_next(iter) )
 	{
-		if( (buy && auction->buyer_id == char_id) || (!buy && auction->seller_id == char_id) )
+		if ((buy && auction->buyer_id == char_id) || (!buy && auction->seller_id == char_id))
 			i++;
 	}
 	dbi_destroy(iter);
@@ -45,7 +63,7 @@ void inter_auction_save(struct auction_data *auction)
 {
 	int j;
 	StringBuf buf;
-	SqlStmt* stmt;
+	struct SqlStmt *stmt;
 
 	if( !auction )
 		return;
@@ -55,7 +73,7 @@ void inter_auction_save(struct auction_data *auction)
 		auction_db, auction->seller_id, auction->buyer_id, auction->price, auction->buynow, auction->hours, (unsigned long)auction->timestamp, auction->item.nameid, auction->type, auction->item.refine, auction->item.attribute);
 	for( j = 0; j < MAX_SLOTS; j++ )
 		StrBuf->Printf(&buf, ", `card%d` = '%d'", j, auction->item.card[j]);
-	StrBuf->Printf(&buf, " WHERE `auction_id` = '%d'", auction->auction_id);
+	StrBuf->Printf(&buf, " WHERE `auction_id` = '%u'", auction->auction_id);
 
 	stmt = SQL->StmtMalloc(inter->sql_handle);
 	if( SQL_SUCCESS != SQL->StmtPrepareStr(stmt, StrBuf->Value(&buf))
@@ -75,7 +93,7 @@ unsigned int inter_auction_create(struct auction_data *auction)
 {
 	int j;
 	StringBuf buf;
-	SqlStmt* stmt;
+	struct SqlStmt *stmt;
 
 	if( !auction )
 		return false;
@@ -160,9 +178,12 @@ static int inter_auction_end_timer(int tid, int64 tick, int id, intptr_t data) {
 
 void inter_auction_delete(struct auction_data *auction)
 {
-	unsigned int auction_id = auction->auction_id;
+	unsigned int auction_id;
+	nullpo_retv(auction);
 
-	if( SQL_ERROR == SQL->Query(inter->sql_handle, "DELETE FROM `%s` WHERE `auction_id` = '%d'", auction_db, auction_id) )
+	auction_id = auction->auction_id;
+
+	if( SQL_ERROR == SQL->Query(inter->sql_handle, "DELETE FROM `%s` WHERE `auction_id` = '%u'", auction_db, auction_id) )
 		Sql_ShowDebug(inter->sql_handle);
 
 	if( auction->auction_end_timer != INVALID_TIMER )
@@ -240,6 +261,8 @@ void mapif_auction_sendlist(int fd, int char_id, short count, short pages, unsig
 {
 	int len = (sizeof(struct auction_data) * count) + 12;
 
+	nullpo_retv(buf);
+
 	WFIFOHEAD(fd, len);
 	WFIFOW(fd,0) = 0x3850;
 	WFIFOW(fd,2) = len;
@@ -257,7 +280,7 @@ void mapif_parse_auction_requestlist(int fd)
 	int price = RFIFOL(fd,10);
 	short type = RFIFOW(fd,8), page = max(1,RFIFOW(fd,14));
 	unsigned char buf[5 * sizeof(struct auction_data)];
-	DBIterator *iter = db_iterator(inter_auction->db);
+	struct DBIterator *iter = db_iterator(inter_auction->db);
 	struct auction_data *auction;
 	short i = 0, j = 0, pages = 1;
 
@@ -296,6 +319,8 @@ void mapif_parse_auction_requestlist(int fd)
 void mapif_auction_register(int fd, struct auction_data *auction)
 {
 	int len = sizeof(struct auction_data) + 4;
+
+	nullpo_retv(auction);
 
 	WFIFOHEAD(fd,len);
 	WFIFOW(fd,0) = 0x3851;
@@ -437,7 +462,7 @@ void mapif_parse_auction_bid(int fd)
 	}
 
 	auction->buyer_id = char_id;
-	safestrncpy(auction->buyer_name, (char*)RFIFOP(fd,16), NAME_LENGTH);
+	safestrncpy(auction->buyer_name, RFIFOP(fd,16), NAME_LENGTH);
 	auction->price = bid;
 
 	if( bid >= auction->buynow )

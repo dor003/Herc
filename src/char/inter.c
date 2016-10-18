@@ -1,41 +1,60 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2016  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "inter.h"
 
+#include "char/char.h"
+#include "char/geoip.h"
+#include "char/int_auction.h"
+#include "char/int_elemental.h"
+#include "char/int_guild.h"
+#include "char/int_homun.h"
+#include "char/int_mail.h"
+#include "char/int_mercenary.h"
+#include "char/int_party.h"
+#include "char/int_pet.h"
+#include "char/int_quest.h"
+#include "char/int_storage.h"
+#include "char/mapif.h"
+#include "common/cbasetypes.h"
+#include "common/conf.h"
+#include "common/db.h"
+#include "common/memmgr.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h"
+#include "common/timer.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "geoip.h"
-#include "int_auction.h"
-#include "int_elemental.h"
-#include "int_guild.h"
-#include "int_homun.h"
-#include "int_mail.h"
-#include "int_mercenary.h"
-#include "int_party.h"
-#include "int_pet.h"
-#include "int_quest.h"
-#include "int_storage.h"
-#include "mapif.h"
-#include "../common/cbasetypes.h"
-#include "../common/db.h"
-#include "../common/malloc.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/strlib.h"
-#include "../common/timer.h"
 
 #define WISDATA_TTL (60*1000) // Wis data Time To Live (60 seconds)
 #define WISDELLIST_MAX 256    // Number of elements in the list Delete data Wis
 
 struct inter_interface inter_s;
+struct inter_interface *inter;
 
 int char_server_port = 3306;
 char char_server_ip[32] = "127.0.0.1";
@@ -44,7 +63,7 @@ char char_server_pw[100] = "ragnarok";
 char char_server_db[32] = "ragnarok";
 char default_codepage[32] = ""; //Feature by irmin.
 
-unsigned int party_share_level = 10;
+int party_share_level = 10;
 
 // recv. packet list
 int inter_recv_packet_length[] = {
@@ -65,7 +84,7 @@ struct WisData {
 	int64 tick;
 	unsigned char src[24], dst[24], msg[512];
 };
-static DBMap* wis_db = NULL; // int wis_id -> struct WisData*
+static struct DBMap *wis_db = NULL; // int wis_id -> struct WisData*
 static int wis_dellist[WISDELLIST_MAX], wis_delnum;
 
 #define MAX_JOB_NAMES 150
@@ -97,6 +116,7 @@ bool inter_msg_config_read(const char *cfg_name, bool allow_override)
 	FILE *fp;
 	static int called = 1;
 
+	nullpo_ret(cfg_name);
 	if ((fp = fopen(cfg_name, "r")) == NULL) {
 		ShowError("Messages file not found: %s\n", cfg_name);
 		return 1;
@@ -384,6 +404,7 @@ void inter_vmsg_to_fd(int fd, int u_fd, int aid, char* msg, va_list ap)
 	va_list apcopy;
 	int len = 1;/* yes we start at 1 */
 
+	nullpo_retv(msg);
 	va_copy(apcopy, ap);
 	len += vsnprintf(msg_out, 512, msg, apcopy);
 	va_end(apcopy);
@@ -394,7 +415,7 @@ void inter_vmsg_to_fd(int fd, int u_fd, int aid, char* msg, va_list ap)
 	WFIFOW(fd,2) = 12 + (unsigned short)len;
 	WFIFOL(fd,4) = u_fd;
 	WFIFOL(fd,8) = aid;
-	safestrncpy((char*)WFIFOP(fd,12), msg_out, len);
+	safestrncpy(WFIFOP(fd,12), msg_out, len);
 
 	WFIFOSET(fd,12 + len);
 
@@ -427,7 +448,7 @@ void mapif_parse_accinfo(int fd)
 	int account_id;
 	char *data;
 
-	safestrncpy(query, (char*) RFIFOP(fd,14), NAME_LENGTH);
+	safestrncpy(query, RFIFOP(fd,14), NAME_LENGTH);
 
 	SQL->EscapeString(inter->sql_handle, query_esq, query);
 
@@ -454,7 +475,7 @@ void mapif_parse_accinfo(int fd)
 				inter->msg_to_fd(fd, u_fd, aid, "Your query returned the following %d results, please be more specific...",(int)SQL->NumRows(inter->sql_handle));
 				while ( SQL_SUCCESS == SQL->NextRow(inter->sql_handle) ) {
 					int class_;
-					short base_level, job_level, online;
+					int base_level, job_level, online;
 					char name[NAME_LENGTH];
 
 					SQL->GetData(inter->sql_handle, 0, &data, NULL); account_id = atoi(data);
@@ -484,7 +505,13 @@ void mapif_parse_accinfo2(bool success, int map_fd, int u_fd, int u_aid, int acc
 		const char *email, const char *last_ip, const char *lastlogin, const char *pin_code, const char *birthdate,
 		int group_id, int logincount, int state)
 {
-	if (map_fd <= 0 || !session_isActive(map_fd))
+	nullpo_retv(userid);
+	nullpo_retv(user_pass);
+	nullpo_retv(email);
+	nullpo_retv(last_ip);
+	nullpo_retv(lastlogin);
+	nullpo_retv(birthdate);
+	if (map_fd <= 0 || !sockt->session_is_active(map_fd))
 		return; // check if we have a valid fd
 
 	if (!success) {
@@ -495,7 +522,7 @@ void mapif_parse_accinfo2(bool success, int map_fd, int u_fd, int u_aid, int acc
 	inter->msg_to_fd(map_fd, u_fd, u_aid, "-- Account %d --", account_id);
 	inter->msg_to_fd(map_fd, u_fd, u_aid, "User: %s | GM Group: %d | State: %d", userid, group_id, state);
 
-	if (user_pass && *user_pass != '\0') { /* password is only received if your gm level is greater than the one you're searching for */
+	if (*user_pass != '\0') { /* password is only received if your gm level is greater than the one you're searching for */
 		if (pin_code && *pin_code != '\0')
 			inter->msg_to_fd(map_fd, u_fd, u_aid, "Password: %s (PIN:%s)", user_pass, pin_code);
 		else
@@ -503,7 +530,7 @@ void mapif_parse_accinfo2(bool success, int map_fd, int u_fd, int u_aid, int acc
 	}
 
 	inter->msg_to_fd(map_fd, u_fd, u_aid, "Account e-mail: %s | Birthdate: %s", email, birthdate);
-	inter->msg_to_fd(map_fd, u_fd, u_aid, "Last IP: %s (%s)", last_ip, geoip->getcountry(str2ip(last_ip)));
+	inter->msg_to_fd(map_fd, u_fd, u_aid, "Last IP: %s (%s)", last_ip, geoip->getcountry(sockt->str2ip(last_ip)));
 	inter->msg_to_fd(map_fd, u_fd, u_aid, "This user has logged %d times, the last time were at %s", logincount, lastlogin);
 	inter->msg_to_fd(map_fd, u_fd, u_aid, "-- Character Details --");
 
@@ -520,7 +547,7 @@ void mapif_parse_accinfo2(bool success, int map_fd, int u_fd, int u_aid, int acc
 		while ( SQL_SUCCESS == SQL->NextRow(inter->sql_handle) ) {
 			char *data;
 			int char_id, class_;
-			short char_num, base_level, job_level, online;
+			int char_num, base_level, job_level, online;
 			char name[NAME_LENGTH];
 
 			SQL->GetData(inter->sql_handle, 0, &data, NULL); char_id = atoi(data);
@@ -546,9 +573,11 @@ void mapif_parse_accinfo2(bool success, int map_fd, int u_fd, int u_aid, int acc
  **/
 void inter_savereg(int account_id, int char_id, const char *key, unsigned int index, intptr_t val, bool is_string)
 {
+	char val_esq[1000];
+	nullpo_retv(key);
 	/* to login server we go! */
 	if( key[0] == '#' && key[1] == '#' ) {/* global account reg */
-		if( session_isValid(chr->login_fd) )
+		if (sockt->session_is_valid(chr->login_fd))
 			chr->global_accreg_to_login_add(key,index,val,is_string);
 		else {
 			ShowError("Login server unavailable, cant perform update on '%s' variable for AID:%d CID:%d\n",key,account_id,char_id);
@@ -556,7 +585,8 @@ void inter_savereg(int account_id, int char_id, const char *key, unsigned int in
 	} else if ( key[0] == '#' ) {/* local account reg */
 		if( is_string ) {
 			if( val ) {
-				if( SQL_ERROR == SQL->Query(inter->sql_handle, "REPLACE INTO `%s` (`account_id`,`key`,`index`,`value`) VALUES ('%d','%s','%u','%s')", acc_reg_str_db, account_id, key, index, (char*)val) )
+				SQL->EscapeString(inter->sql_handle, val_esq, (char*)val);
+				if( SQL_ERROR == SQL->Query(inter->sql_handle, "REPLACE INTO `%s` (`account_id`,`key`,`index`,`value`) VALUES ('%d','%s','%u','%s')", acc_reg_str_db, account_id, key, index, val_esq) )
 					Sql_ShowDebug(inter->sql_handle);
 			} else {
 				if( SQL_ERROR == SQL->Query(inter->sql_handle, "DELETE FROM `%s` WHERE `account_id` = '%d' AND `key` = '%s' AND `index` = '%u' LIMIT 1", acc_reg_str_db, account_id, key, index) )
@@ -574,7 +604,8 @@ void inter_savereg(int account_id, int char_id, const char *key, unsigned int in
 	} else { /* char reg */
 		if( is_string ) {
 			if( val ) {
-				if( SQL_ERROR == SQL->Query(inter->sql_handle, "REPLACE INTO `%s` (`char_id`,`key`,`index`,`value`) VALUES ('%d','%s','%u','%s')", char_reg_str_db, char_id, key, index, (char*)val) )
+				SQL->EscapeString(inter->sql_handle, val_esq, (char*)val);
+				if( SQL_ERROR == SQL->Query(inter->sql_handle, "REPLACE INTO `%s` (`char_id`,`key`,`index`,`value`) VALUES ('%d','%s','%u','%s')", char_reg_str_db, char_id, key, index, val_esq) )
 					Sql_ShowDebug(inter->sql_handle);
 			} else {
 				if( SQL_ERROR == SQL->Query(inter->sql_handle, "DELETE FROM `%s` WHERE `char_id` = '%d' AND `key` = '%s' AND `index` = '%u' LIMIT 1", char_reg_str_db, char_id, key, index) )
@@ -639,7 +670,7 @@ int inter_accreg_fromsql(int account_id,int char_id, int fd, int type)
 		WFIFOB(fd, plen) = (unsigned char)len;/* won't be higher; the column size is 32 */
 		plen += 1;
 
-		safestrncpy((char*)WFIFOP(fd,plen), data, len);
+		safestrncpy(WFIFOP(fd,plen), data, len);
 		plen += len;
 
 		SQL->GetData(inter->sql_handle, 1, &data, NULL);
@@ -653,7 +684,7 @@ int inter_accreg_fromsql(int account_id,int char_id, int fd, int type)
 		WFIFOB(fd, plen) = (unsigned char)len;/* won't be higher; the column size is 254 */
 		plen += 1;
 
-		safestrncpy((char*)WFIFOP(fd,plen), data, len);
+		safestrncpy(WFIFOP(fd,plen), data, len);
 		plen += len;
 
 		WFIFOW(fd, 14) += 1;
@@ -720,7 +751,7 @@ int inter_accreg_fromsql(int account_id,int char_id, int fd, int type)
 		WFIFOB(fd, plen) = (unsigned char)len;/* won't be higher; the column size is 32 */
 		plen += 1;
 
-		safestrncpy((char*)WFIFOP(fd,plen), data, len);
+		safestrncpy(WFIFOP(fd,plen), data, len);
 		plen += len;
 
 		SQL->GetData(inter->sql_handle, 1, &data, NULL);
@@ -761,49 +792,114 @@ int inter_accreg_fromsql(int account_id,int char_id, int fd, int type)
 	return 1;
 }
 
-/*==========================================
- * read config file
- *------------------------------------------*/
-static int inter_config_read(const char* cfgName)
+/**
+ * Reads the 'inter_configuration/log' config entry and initializes required variables.
+ *
+ * @param filename Path to configuration file (used in error and warning messages).
+ * @param config   The current config being parsed.
+ * @param imported Whether the current config is imported from another file.
+ *
+ * @retval false in case of error.
+ */
+bool inter_config_read_log(const char *filename, const struct config_t *config, bool imported)
 {
-	char line[1024], w1[1024], w2[1024];
-	FILE* fp;
+	const struct config_setting_t *setting = NULL;
 
-	fp = fopen(cfgName, "r");
-	if(fp == NULL) {
-		ShowError("File not found: %s\n", cfgName);
-		return 1;
+	nullpo_retr(false, filename);
+	nullpo_retr(false, config);
+
+	if ((setting = libconfig->lookup(config, "inter_configuration/log")) == NULL) {
+		if (imported)
+			return true;
+		ShowError("sql_config_read: inter_configuration/log was not found in %s!\n", filename);
+		return false;
 	}
 
-	while (fgets(line, sizeof(line), fp)) {
-		int i = sscanf(line, "%1023[^:]: %1023[^\r\n]", w1, w2);
-		if(i != 2)
-			continue;
+	libconfig->setting_lookup_bool_real(setting, "log_inter", &inter->enable_logs);
 
-		if(!strcmpi(w1,"char_server_ip")) {
-			safestrncpy(char_server_ip, w2, sizeof(char_server_ip));
-		} else if(!strcmpi(w1,"char_server_port")) {
-			char_server_port = atoi(w2);
-		} else if(!strcmpi(w1,"char_server_id")) {
-			safestrncpy(char_server_id, w2, sizeof(char_server_id));
-		} else if(!strcmpi(w1,"char_server_pw")) {
-			safestrncpy(char_server_pw, w2, sizeof(char_server_pw));
-		} else if(!strcmpi(w1,"char_server_db")) {
-			safestrncpy(char_server_db, w2, sizeof(char_server_db));
-		} else if(!strcmpi(w1,"default_codepage")) {
-			safestrncpy(default_codepage, w2, sizeof(default_codepage));
-		} else if(!strcmpi(w1,"party_share_level"))
-			party_share_level = atoi(w2);
-		else if(!strcmpi(w1,"log_inter"))
-			log_inter = atoi(w2);
-		else if(!strcmpi(w1,"import"))
-			inter->config_read(w2);
+	return true;
+}
+
+/**
+ * Reads the 'char_configuration/sql_connection' config entry and initializes required variables.
+ *
+ * @param filename Path to configuration file (used in error and warning messages).
+ * @param config   The current config being parsed.
+ * @param imported Whether the current config is imported from another file.
+ *
+ * @retval false in case of error.
+ */
+bool inter_config_read_connection(const char *filename, const struct config_t *config, bool imported)
+{
+	const struct config_setting_t *setting = NULL;
+
+	nullpo_retr(false, filename);
+	nullpo_retr(false, config);
+
+	if ((setting = libconfig->lookup(config, "char_configuration/sql_connection")) == NULL) {
+		if (imported)
+			return true;
+		ShowError("char_config_read: char_configuration/sql_connection was not found in %s!\n", filename);
+		ShowWarning("inter_config_read_connection: Defaulting sql_connection...\n");
+		return false;
 	}
-	fclose(fp);
 
-	ShowInfo ("Done reading %s.\n", cfgName);
+	libconfig->setting_lookup_int(setting, "db_port", &char_server_port);
+	libconfig->setting_lookup_mutable_string(setting, "db_hostname", char_server_ip, sizeof(char_server_ip));
+	libconfig->setting_lookup_mutable_string(setting, "db_username", char_server_id, sizeof(char_server_id));
+	libconfig->setting_lookup_mutable_string(setting, "db_password", char_server_pw, sizeof(char_server_pw));
+	libconfig->setting_lookup_mutable_string(setting, "db_database", char_server_db, sizeof(char_server_db));
+	libconfig->setting_lookup_mutable_string(setting, "default_codepage", default_codepage, sizeof(default_codepage));
 
-	return 0;
+	return true;
+}
+
+/**
+ * Reads the 'inter_configuration' config file and initializes required variables.
+ *
+ * @param filename Path to configuration file
+ * @param imported Whether the current config is from an imported file.
+ *
+ * @retval false in case of error.
+ */
+bool inter_config_read(const char *filename, bool imported)
+{
+	struct config_t config;
+	const struct config_setting_t *setting = NULL;
+	const char *import = NULL;
+	bool retval = true;
+
+	nullpo_retr(false, filename);
+
+	if (!libconfig->load_file(&config, filename))
+		return false;
+
+	if ((setting = libconfig->lookup(&config, "inter_configuration")) == NULL) {
+		libconfig->destroy(&config);
+		if (imported)
+			return true;
+		ShowError("inter_config_read: inter_configuration was not found in %s!\n", filename);
+		return false;
+	}
+	libconfig->setting_lookup_int(setting, "party_share_level", &party_share_level);
+
+	if (!inter->config_read_log(filename, &config, imported))
+		retval = false;
+
+	ShowInfo("Done reading %s.\n", filename);
+
+	// import should overwrite any previous configuration, so it should be called last
+	if (libconfig->lookup_string(&config, "import", &import) == CONFIG_TRUE) {
+		if (strcmp(import, filename) == 0 || strcmp(import, chr->INTER_CONF_NAME) == 0) {
+			ShowWarning("inter_config_read: Loop detected in %s! Skipping 'import'...\n", filename);
+		} else {
+			if (!inter->config_read(import, true))
+				retval = false;
+		}
+	}
+
+	libconfig->destroy(&config);
+	return retval;
 }
 
 /**
@@ -848,9 +944,7 @@ int inter_log(char* fmt, ...)
 // initialize
 int inter_init_sql(const char *file)
 {
-	//int i;
-
-	inter->config_read(file);
+	inter->config_read(file, false);
 
 	//DB connection initialized
 	inter->sql_handle = SQL->Malloc();
@@ -912,10 +1006,12 @@ int inter_mapif_init(int fd)
 //--------------------------------------------------------
 
 // broadcast sending
-int mapif_broadcast(unsigned char *mes, int len, unsigned int fontColor, short fontType, short fontSize, short fontAlign, short fontY, int sfd)
+int mapif_broadcast(const unsigned char *mes, int len, unsigned int fontColor, short fontType, short fontSize, short fontAlign, short fontY, int sfd)
 {
 	unsigned char *buf = (unsigned char*)aMalloc((len)*sizeof(unsigned char));
 
+	nullpo_ret(mes);
+	Assert_ret(len >= 16);
 	WBUFW(buf,0) = 0x3800;
 	WBUFW(buf,2) = len;
 	WBUFL(buf,4) = fontColor;
@@ -934,9 +1030,13 @@ int mapif_broadcast(unsigned char *mes, int len, unsigned int fontColor, short f
 int mapif_wis_message(struct WisData *wd)
 {
 	unsigned char buf[2048];
+	nullpo_ret(wd);
 	//if (wd->len > 2047-56) wd->len = 2047-56; //Force it to fit to avoid crashes. [Skotlex]
-	if( wd->len >= sizeof(wd->msg) - 1 ) wd->len = sizeof(wd->msg) - 1;
-	
+	if (wd->len < 0)
+		wd->len = 0;
+	if (wd->len >= (int)sizeof(wd->msg) - 1)
+		wd->len = (int)sizeof(wd->msg) - 1;
+
 	WBUFW(buf, 0) = 0x3801;
 	WBUFW(buf, 2) = 56 +wd->len;
 	WBUFL(buf, 4) = wd->id;
@@ -948,9 +1048,10 @@ int mapif_wis_message(struct WisData *wd)
 	return 0;
 }
 
-void mapif_wis_response(int fd, unsigned char *src, int flag)
+void mapif_wis_response(int fd, const unsigned char *src, int flag)
 {
 	unsigned char buf[27];
+	nullpo_retv(src);
 	WBUFW(buf, 0)=0x3802;
 	memcpy(WBUFP(buf, 2),src,24);
 	WBUFB(buf,26)=flag;
@@ -960,6 +1061,7 @@ void mapif_wis_response(int fd, unsigned char *src, int flag)
 // Wis sending result
 int mapif_wis_end(struct WisData *wd, int flag)
 {
+	nullpo_ret(wd);
 	mapif->wis_response(wd->fd, wd->src, flag);
 	return 0;
 }
@@ -968,6 +1070,7 @@ int mapif_wis_end(struct WisData *wd, int flag)
 // Account registry transfer to map-server
 static void mapif_account_reg(int fd, unsigned char *src)
 {
+	nullpo_retv(src);
 	WBUFW(src,0)=0x3804; //NOTE: writing to RFIFO
 	mapif->sendallwos(fd, src, WBUFW(src,2));
 }
@@ -1001,10 +1104,11 @@ int mapif_disconnectplayer(int fd, int account_id, int char_id, int reason)
  * Existence check of WISP data
  * @see DBApply
  */
-int inter_check_ttl_wisdata_sub(DBKey key, DBData *data, va_list ap)
+int inter_check_ttl_wisdata_sub(union DBKey key, struct DBData *data, va_list ap)
 {
 	int64 tick;
 	struct WisData *wd = DB->data2ptr(data);
+	nullpo_ret(wd);
 	tick = va_arg(ap, int64);
 
 	if (DIFF_TICK(tick, wd->tick) > WISDATA_TTL && wis_delnum < WISDELLIST_MAX)
@@ -1047,7 +1151,6 @@ int mapif_parse_broadcast(int fd)
 int mapif_parse_WisRequest(int fd)
 {
 	struct WisData* wd;
-	static int wisid = 0;
 	char name[NAME_LENGTH];
 	char esc_name[NAME_LENGTH*2+1];// escaped name
 	char* data;
@@ -1064,7 +1167,7 @@ int mapif_parse_WisRequest(int fd)
 		return 0;
 	}
 
-	safestrncpy(name, (char*)RFIFOP(fd,28), NAME_LENGTH); //Received name may be too large and not contain \0! [Skotlex]
+	safestrncpy(name, RFIFOP(fd,28), NAME_LENGTH); //Received name may be too large and not contain \0! [Skotlex]
 
 	SQL->EscapeStringLen(inter->sql_handle, esc_name, name, strnlen(name, NAME_LENGTH));
 	if( SQL_ERROR == SQL->Query(inter->sql_handle, "SELECT `name` FROM `%s` WHERE `name`='%s'", char_db, esc_name) )
@@ -1082,12 +1185,12 @@ int mapif_parse_WisRequest(int fd)
 		memset(name, 0, NAME_LENGTH);
 		memcpy(name, data, min(len, NAME_LENGTH));
 		// if source is destination, don't ask other servers.
-		if( strncmp((const char*)RFIFOP(fd,4), name, NAME_LENGTH) == 0 )
-		{
+		if (strncmp(RFIFOP(fd,4), name, NAME_LENGTH) == 0) {
 			mapif->wis_response(fd, RFIFOP(fd, 4), 1);
 		}
 		else
 		{
+			static int wisid = 0;
 			CREATE(wd, struct WisData, 1);
 
 			// Whether the failure of previous wisp/page transmission (timeout)
@@ -1135,7 +1238,7 @@ int mapif_parse_WisToGM(int fd)
 {
 	unsigned char buf[2048]; // 0x3003/0x3803 <packet_len>.w <wispname>.24B <min_gm_level>.w <message>.?B
 
-	memcpy(WBUFP(buf,0), RFIFOP(fd,0), RFIFOW(fd,2));
+	memcpy(WBUFP(buf,0), RFIFOP(fd,0), RFIFOW(fd,2)); // Message contains the NUL terminator (see intif_wis_message_to_gm())
 	WBUFW(buf, 0) = 0x3803;
 	mapif->sendall(buf, RFIFOW(fd,2));
 
@@ -1149,16 +1252,17 @@ int mapif_parse_Registry(int fd)
 
 	if( count ) {
 		int cursor = 14, i;
-		char key[32], sval[254];
-		bool isLoginActive = session_isActive(chr->login_fd);
+		char key[SCRIPT_VARNAME_LENGTH+1], sval[254];
+		bool isLoginActive = sockt->session_is_active(chr->login_fd);
 
 		if( isLoginActive )
 			chr->global_accreg_to_login_start(account_id,char_id);
 
 		for(i = 0; i < count; i++) {
 			unsigned int index;
-			safestrncpy(key, (char*)RFIFOP(fd, cursor + 1), RFIFOB(fd, cursor));
-			cursor += RFIFOB(fd, cursor) + 1;
+			int len = RFIFOB(fd, cursor);
+			safestrncpy(key, RFIFOP(fd, cursor + 1), min((int)sizeof(key), len));
+			cursor += len + 1;
 
 			index = RFIFOL(fd, cursor);
 			cursor += 4;
@@ -1174,8 +1278,9 @@ int mapif_parse_Registry(int fd)
 					break;
 				/* str */
 				case 2:
-					safestrncpy(sval, (char*)RFIFOP(fd, cursor + 1), RFIFOB(fd, cursor));
-					cursor += RFIFOB(fd, cursor) + 1;
+					len = RFIFOB(fd, cursor);
+					safestrncpy(sval, RFIFOP(fd, cursor + 1), min((int)sizeof(sval), len));
+					cursor += len + 1;
 					inter->savereg(account_id,char_id,key,index,(intptr_t)sval,true);
 					break;
 				case 3:
@@ -1198,9 +1303,9 @@ int mapif_parse_Registry(int fd)
 int mapif_parse_RegistryRequest(int fd)
 {
 	//Load Char Registry
-	if (RFIFOB(fd,12)) mapif->account_reg_reply(fd,RFIFOL(fd,2),RFIFOL(fd,6),3);
+	if (RFIFOB(fd,12)) mapif->account_reg_reply(fd,RFIFOL(fd,2),RFIFOL(fd,6),3); // 3: char reg
 	//Load Account Registry
-	if (RFIFOB(fd,11)) mapif->account_reg_reply(fd,RFIFOL(fd,2),RFIFOL(fd,6),2);
+	if (RFIFOB(fd,11)) mapif->account_reg_reply(fd,RFIFOL(fd,2),RFIFOL(fd,6),2); // 2: account reg
 	//Ask Login Server for Account2 values.
 	if (RFIFOB(fd,10)) chr->request_accreg2(RFIFOL(fd,2),RFIFOL(fd,6));
 	return 1;
@@ -1208,6 +1313,7 @@ int mapif_parse_RegistryRequest(int fd)
 
 void mapif_namechange_ack(int fd, int account_id, int char_id, int type, int flag, const char *const name)
 {
+	nullpo_retv(name);
 	WFIFOHEAD(fd, NAME_LENGTH+13);
 	WFIFOW(fd, 0) = 0x3806;
 	WFIFOL(fd, 2) = account_id;
@@ -1221,13 +1327,13 @@ void mapif_namechange_ack(int fd, int account_id, int char_id, int type, int fla
 int mapif_parse_NameChangeRequest(int fd)
 {
 	int account_id, char_id, type;
-	char* name;
+	const char *name;
 	int i;
 
 	account_id = RFIFOL(fd,2);
 	char_id = RFIFOL(fd,6);
 	type = RFIFOB(fd,10);
-	name = (char*)RFIFOP(fd,11);
+	name = RFIFOP(fd,11);
 
 	// Check Authorized letters/symbols in the name
 	if (char_name_option == 1) { // only letters/symbols in char_name_letters are authorized
@@ -1321,6 +1427,7 @@ void inter_defaults(void)
 {
 	inter = &inter_s;
 
+	inter->enable_logs = true;
 	inter->sql_handle = NULL;
 
 	inter->msg_txt = inter_msg_txt;
@@ -1341,4 +1448,6 @@ void inter_defaults(void)
 	inter->check_length = inter_check_length;
 	inter->parse_frommap = inter_parse_frommap;
 	inter->final = inter_final;
+	inter->config_read_log = inter_config_read_log;
+	inter->config_read_connection = inter_config_read_connection;
 }

@@ -1,22 +1,39 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "geoip.h"
+
+#include "common/cbasetypes.h"
+#include "common/memmgr.h"
+#include "common/showmsg.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <sys/stat.h> // for stat/lstat/fstat - [Dekamaster/Ultimate GM Tool]
 
-#include "../common/cbasetypes.h"
-#include "../common/malloc.h"
-#include "../common/showmsg.h"
-
 struct s_geoip geoip_data;
 
 struct geoip_interface geoip_s;
+struct geoip_interface *geoip;
 
 /* [Dekamaster/Nightroad] */
 #define GEOIP_MAX_COUNTRIES 255
@@ -84,7 +101,7 @@ const char* geoip_getcountry(uint32 ipnum)
 		}
 		offset = x;
 	}
-	ShowError("geoip_getcountry(): Error traversing database for ipnum %d\n", ipnum);
+	ShowError("geoip_getcountry(): Error traversing database for ipnum %u\n", ipnum);
 	ShowWarning("geoip_getcountry(): Possible database corruption!\n");
 
 	return geoip_countryname[0];
@@ -115,9 +132,8 @@ void geoip_final(bool shutdown)
  **/
 void geoip_init(void)
 {
-	int i, fno;
+	int fno;
 	char db_type = 1;
-	unsigned char delim[3];
 	struct stat bufa;
 	FILE *db;
 
@@ -145,18 +161,22 @@ void geoip_init(void)
 	}
 
 	// Search database type
-	fseek(db, -3l, SEEK_END);
-	for (i = 0; i < GEOIP_STRUCTURE_INFO_MAX_SIZE; i++) {
-		if (fread(delim, sizeof(delim[0]), 3, db) != 3) {
-			db_type = 0;
-			break;
-		}
-		if (delim[0] == 255 && delim[1] == 255 && delim[2] == 255) {
-			if (fread(&db_type, sizeof(db_type), 1, db) != 1) {
+	if (fseek(db, -3l, SEEK_END) != 0) {
+		db_type = 0;
+	} else {
+		int i;
+		unsigned char delim[3];
+		for (i = 0; i < GEOIP_STRUCTURE_INFO_MAX_SIZE; i++) {
+			if (fread(delim, sizeof(delim[0]), 3, db) != 3) {
 				db_type = 0;
+				break;
 			}
-			break;
-		} else {
+			if (delim[0] == 255 && delim[1] == 255 && delim[2] == 255) {
+				if (fread(&db_type, sizeof(db_type), 1, db) != 1) {
+					db_type = 0;
+				}
+				break;
+			}
 			if (fseek(db, -4l, SEEK_CUR) != 0) {
 				db_type = 0;
 				break;

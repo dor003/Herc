@@ -1,3 +1,22 @@
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2015  Hercules Dev Team
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef COMMON_CBASETYPES_H
 #define COMMON_CBASETYPES_H
 
@@ -75,7 +94,7 @@
 
 // debug function name
 #ifndef __NETBSD__
-#if __STDC_VERSION__ < 199901L
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
 #	if __GNUC__ >= 2
 #		define __func__ __FUNCTION__
 #	else
@@ -97,16 +116,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <limits.h>
-
-// temporary fix for bugreport:4961 (unintended conversion from signed to unsigned)
-// (-20 >= UCHAR_MAX) returns true
-// (-20 >= USHRT_MAX) returns true
-#if defined(__FreeBSD__) && defined(__x86_64)
-#undef UCHAR_MAX
-#define UCHAR_MAX ((unsigned char)0xff)
-#undef USHRT_MAX
-#define USHRT_MAX ((unsigned short)0xffff)
-#endif
+#include <time.h>
 
 // ILP64 isn't supported, so always 32 bits?
 #ifndef UINT_MAX
@@ -239,9 +249,8 @@ typedef uintptr_t uintptr;
 #define strcasecmp  stricmp
 #define strncasecmp strnicmp
 #define strncmpi    strnicmp
+#if defined(__BORLANDC__) || _MSC_VER < 1900
 #define snprintf    _snprintf
-#if defined(_MSC_VER) && _MSC_VER < 1400
-#define vsnprintf   _vsnprintf
 #endif
 #else
 #define strcmpi     strcasecmp
@@ -249,7 +258,7 @@ typedef uintptr_t uintptr;
 #define strncmpi    strncasecmp
 #define strnicmp    strncasecmp
 #endif
-#if defined(_MSC_VER) && _MSC_VER > 1200
+#if defined(_MSC_VER)
 #define strtoull    _strtoui64
 #define strtoll     _strtoi64
 #endif
@@ -273,6 +282,28 @@ typedef uintptr_t uintptr;
 #define analyzer_noreturn
 #endif
 
+// gcc version (if any) - borrowed from Mana Plus
+#ifdef __GNUC__
+#define GCC_VERSION (__GNUC__ * 10000 \
+		+ __GNUC_MINOR__ * 100 \
+		+ __GNUC_PATCHLEVEL__)
+#else
+#define GCC_VERSION 0
+#endif
+
+// Pragma macro only enabled on gcc >= 4.6 or clang - borrowed from Mana Plus
+#if defined(__GNUC__) && (defined(__clang__) || GCC_VERSION >= 40600)
+#define PRAGMA_GCC46(str) _Pragma(#str)
+#else // ! defined(__GNUC__) && (defined(__clang__) || GCC_VERSION >= 40600)
+#define PRAGMA_GCC46(str)
+#endif // ! defined(__GNUC__) && (defined(__clang__) || GCC_VERSION >= 40600)
+
+// fallthrough attribute only enabled on gcc >= 7.0
+#if defined(__GNUC__) && (GCC_VERSION >= 70000)
+#define FALLTHROUGH __attribute__ ((fallthrough));
+#else // ! defined(__GNUC__) && (GCC_VERSION >= 70000)
+#define FALLTHROUGH
+#endif // ! defined(__GNUC__) && (GCC_VERSION >= 70000)
 
 // boolean types for C
 #if !defined(_MSC_VER) || _MSC_VER >= 1800
@@ -305,24 +336,6 @@ typedef char bool;
 //#define swap(a,b) if (a != b) ((a ^= b), (b ^= a), (a ^= b))
 // but is vulnerable to 'if (foo) swap(bar, baz); else quux();', causing the else to nest incorrectly.
 #define swap(a,b) do { if ((a) != (b)) { (a) ^= (b); (b) ^= (a); (a) ^= (b); } } while(0)
-#if 0 //to be activated soon, more tests needed on how VS works with the macro above
-#ifdef WIN32
-#undef swap
-#define swap(a,b)__asm { \
-	__asm mov eax, dword ptr [a] \
-	__asm cmp eax, dword ptr [b] \
-	__asm je  _ret               \
-	__asm xor eax, dword ptr [b] \
-	__asm mov dword ptr [a], eax \
-	__asm xor eax, dword ptr [b] \
-	__asm mov dword ptr [b], eax \
-	__asm xor eax, dword ptr [a] \
-	__asm mov dword ptr [a], eax \
-	__asm _ret:                  \
-}
-#endif
-#endif
-
 #define swap_ptr(a,b) do { if ((a) != (b)) (a) = (void*)((intptr_t)(a) ^ (intptr_t)(b)); (b) = (void*)((intptr_t)(a) ^ (intptr_t)(b)); (a) = (void*)((intptr_t)(a) ^ (intptr_t)(b)); } while(0)
 
 #ifndef max
@@ -388,7 +401,7 @@ typedef char bool;
 
 //////////////////////////////////////////////////////////////////////////
 // length of a static array
-#define ARRAYLENGTH(A) ( sizeof(A)/sizeof((A)[0]) )
+#define ARRAYLENGTH(A) ( (int)(sizeof(A)/sizeof((A)[0])) )
 
 //////////////////////////////////////////////////////////////////////////
 // Make sure va_copy exists
@@ -418,5 +431,14 @@ typedef char bool;
 #else
 	#define h64BPTRSIZE(y) (y)
 #endif
+
+/** Support macros for marking blocks to memset to 0 */
+#define BEGIN_ZEROED_BLOCK int8 HERC__zeroed_block_BEGIN
+#define END_ZEROED_BLOCK int8 HERC__zeroed_block_END
+#define ZEROED_BLOCK_POS(x) (&(x)->HERC__zeroed_block_BEGIN)
+#define ZEROED_BLOCK_SIZE(x) ((char*)&((x)->HERC__zeroed_block_END) - (char*)&((x)->HERC__zeroed_block_BEGIN) + sizeof((x)->HERC__zeroed_block_END))
+
+/** Support macros for marking structs as unavailable */
+#define UNAVAILABLE_STRUCT int8 HERC__unavailable_struct
 
 #endif /* COMMON_CBASETYPES_H */

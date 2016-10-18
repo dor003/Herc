@@ -1,34 +1,52 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-// Portions Copyright (c) Athena Dev Teams
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2012-2016  Hercules Dev Team
+ * Copyright (C)  Athena Dev Teams
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #define HERCULES_CORE
 
 #include "int_party.h"
 
+#include "char/char.h"
+#include "char/inter.h"
+#include "char/mapif.h"
+#include "common/cbasetypes.h"
+#include "common/db.h"
+#include "common/memmgr.h"
+#include "common/mapindex.h"
+#include "common/mmo.h"
+#include "common/nullpo.h"
+#include "common/showmsg.h"
+#include "common/socket.h"
+#include "common/sql.h"
+#include "common/strlib.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "char.h"
-#include "inter.h"
-#include "mapif.h"
-#include "../common/cbasetypes.h"
-#include "../common/db.h"
-#include "../common/malloc.h"
-#include "../common/mapindex.h"
-#include "../common/mmo.h"
-#include "../common/showmsg.h"
-#include "../common/socket.h"
-#include "../common/sql.h"
-#include "../common/strlib.h"
 
 struct inter_party_interface inter_party_s;
+struct inter_party_interface *inter_party;
 
 //Updates party's level range and unsets even share if broken.
 static int inter_party_check_lv(struct party_data *p) {
 	int i;
 	unsigned int lv;
+	nullpo_ret(p);
 	p->min_lv = UINT_MAX;
 	p->max_lv = 0;
 	for(i=0;i<MAX_PARTY;i++){
@@ -54,6 +72,7 @@ static int inter_party_check_lv(struct party_data *p) {
 static void inter_party_calc_state(struct party_data *p)
 {
 	int i;
+	nullpo_retv(p);
 	p->min_lv = UINT_MAX;
 	p->max_lv = 0;
 	p->party.count =
@@ -67,9 +86,10 @@ static void inter_party_calc_state(struct party_data *p)
 		if(p->party.member[i].online)
 			p->party.count++;
 	}
+	// FIXME[Haru]: What if the occupied positions aren't the first three? It can happen if some party members leave. This is the reason why family sharing some times stops working until you recreate your party
 	if( p->size == 2 && ( chr->char_child(p->party.member[0].char_id,p->party.member[1].char_id) || chr->char_child(p->party.member[1].char_id,p->party.member[0].char_id) ) ) {
 		//Child should be able to share with either of their parents  [RoM]
-		if(p->party.member[0].class_&0x2000) //first slot is the child?
+		if(p->party.member[0].class_&JOBL_BABY) //first slot is the child?
 			p->family = p->party.member[0].char_id;
 		else
 			p->family = p->party.member[1].char_id;
@@ -109,6 +129,7 @@ int inter_party_tosql(struct party *p, int flag, int index)
 
 	if( p == NULL || p->party_id == 0 )
 		return 0;
+	Assert_ret(index >= 0 && index < MAX_PARTY);
 	party_id = p->party_id;
 
 #ifdef NOISY
@@ -169,7 +190,7 @@ int inter_party_tosql(struct party *p, int flag, int index)
 			Sql_ShowDebug(inter->sql_handle);
 	}
 
-	if( save_log )
+	if (chr->show_save_log)
 		ShowInfo("Party Saved (%d - %s)\n", party_id, p->name);
 	return 1;
 }
@@ -236,7 +257,7 @@ struct party_data *inter_party_fromsql(int party_id)
 	}
 	SQL->FreeResult(inter->sql_handle);
 
-	if( save_log )
+	if (chr->show_save_log)
 		ShowInfo("Party loaded (%d - %s).\n", party_id, p->party.name);
 	//Add party to memory.
 	CREATE(p, struct party_data, 1);
@@ -257,12 +278,12 @@ int inter_party_sql_init(void)
 		exit(EXIT_FAILURE);
 	}
 
-	/* Uncomment the following if you want to do a party_db cleanup (remove parties with no members) on startup.[Skotlex]
+#if 0 // Enable if you want to do a party_db cleanup (remove parties with no members) on startup.[Skotlex]
 	ShowStatus("cleaning party table...\n");
 	if( SQL_ERROR == SQL->Query(inter->sql_handle, "DELETE FROM `%s` USING `%s` LEFT JOIN `%s` ON `%s`.leader_id =`%s`.account_id AND `%s`.leader_char = `%s`.char_id WHERE `%s`.account_id IS NULL",
 		party_db, party_db, char_db, party_db, char_db, party_db, char_db, char_db) )
 		Sql_ShowDebug(inter->sql_handle);
-	*/
+#endif // 0
 	return 0;
 }
 
@@ -295,6 +316,7 @@ struct party_data* inter_party_search_partyname(const char *const str)
 // Returns whether this party can keep having exp share or not.
 int inter_party_check_exp_share(struct party_data *const p)
 {
+	nullpo_ret(p);
 	return (p->party.count < 2 || p->max_lv - p->min_lv <= party_share_level);
 }
 
@@ -353,6 +375,7 @@ void mapif_party_noinfo(int fd, int party_id, int char_id)
 void mapif_party_info(int fd, struct party* p, int char_id)
 {
 	unsigned char buf[8 + sizeof(struct party)];
+	nullpo_retv(p);
 	WBUFW(buf,0) = 0x3821;
 	WBUFW(buf,2) = 8 + sizeof(struct party);
 	WBUFL(buf,4) = char_id;
@@ -381,6 +404,7 @@ int mapif_party_memberadded(int fd, int party_id, int account_id, int char_id, i
 int mapif_party_optionchanged(int fd, struct party *p, int account_id, int flag)
 {
 	unsigned char buf[16];
+	nullpo_ret(p);
 	WBUFW(buf,0)=0x3823;
 	WBUFL(buf,2)=p->party_id;
 	WBUFL(buf,6)=account_id;
@@ -411,6 +435,8 @@ int mapif_party_membermoved(struct party *p, int idx)
 {
 	unsigned char buf[20];
 
+	nullpo_ret(p);
+	Assert_ret(idx >= 0 && idx < MAX_PARTY);
 	WBUFW(buf,0) = 0x3825;
 	WBUFL(buf,2) = p->party_id;
 	WBUFL(buf,6) = p->member[idx].account_id;
@@ -435,9 +461,10 @@ int mapif_party_broken(int party_id, int flag)
 }
 
 //Remarks in the party
-int mapif_party_message(int party_id, int account_id, char *mes, int len, int sfd)
+int mapif_party_message(int party_id, int account_id, const char *mes, int len, int sfd)
 {
 	unsigned char buf[512];
+	nullpo_ret(mes);
 	WBUFW(buf,0)=0x3827;
 	WBUFW(buf,2)=len+12;
 	WBUFL(buf,4)=party_id;
@@ -452,11 +479,13 @@ int mapif_party_message(int party_id, int account_id, char *mes, int len, int sf
 
 
 // Create Party
-int mapif_parse_CreateParty(int fd, char *name, int item, int item2, struct party_member *leader)
+int mapif_parse_CreateParty(int fd, const char *name, int item, int item2, const struct party_member *leader)
 {
 	struct party_data *p;
 	int i;
-	if( (p=inter_party->search_partyname(name))!=NULL){
+	nullpo_ret(name);
+	nullpo_ret(leader);
+	if (!*name || (p = inter_party->search_partyname(name)) != NULL) {
 		mapif->party_created(fd,leader->account_id,leader->char_id,NULL);
 		return 0;
 	}
@@ -464,9 +493,12 @@ int mapif_parse_CreateParty(int fd, char *name, int item, int item2, struct part
 	if (char_name_option == 1) { // only letters/symbols in char_name_letters are authorized
 		for (i = 0; i < NAME_LENGTH && name[i]; i++)
 			if (strchr(char_name_letters, name[i]) == NULL) {
-				if( name[i] == '"' ) { /* client-special-char */
-					normalize_name(name,"\"");
-					mapif->parse_CreateParty(fd,name,item,item2,leader);
+				if (name[i] == '"') { /* client-special-char */
+					char *newname = aStrndup(name, NAME_LENGTH-1);
+					normalize_name(newname,"\"");
+					trim(newname);
+					mapif->parse_CreateParty(fd, newname, item, item2, leader);
+					aFree(newname);
 					return 0;
 				}
 				mapif->party_created(fd,leader->account_id,leader->char_id,NULL);
@@ -482,7 +514,7 @@ int mapif_parse_CreateParty(int fd, char *name, int item, int item2, struct part
 
 	p = (struct party_data*)aCalloc(1, sizeof(struct party_data));
 
-	memcpy(p->party.name,name,NAME_LENGTH);
+	safestrncpy(p->party.name, name, NAME_LENGTH);
 	p->party.exp=0;
 	p->party.item=(item?1:0)|(item2?2:0);
 
@@ -518,11 +550,12 @@ void mapif_parse_PartyInfo(int fd, int party_id, int char_id)
 }
 
 // Add a player to party request
-int mapif_parse_PartyAddMember(int fd, int party_id, struct party_member *member)
+int mapif_parse_PartyAddMember(int fd, int party_id, const struct party_member *member)
 {
 	struct party_data *p;
 	int i;
 
+	nullpo_ret(member);
 	p = inter_party->fromsql(party_id);
 	if( p == NULL || p->size == MAX_PARTY ) {
 		mapif->party_memberadded(fd, party_id, member->account_id, member->char_id, 1);
@@ -580,7 +613,7 @@ int mapif_parse_PartyChangeOption(int fd,int party_id,int account_id,int exp,int
 int mapif_parse_PartyLeave(int fd, int party_id, int account_id, int char_id)
 {
 	struct party_data *p;
-	int i,j=-1;
+	int i,j;
 
 	p = inter_party->fromsql(party_id);
 	if( p == NULL )
@@ -699,7 +732,7 @@ int mapif_parse_BreakParty(int fd, int party_id)
 }
 
 //Party sending the message
-int mapif_parse_PartyMessage(int fd, int party_id, int account_id, char *mes, int len)
+int mapif_parse_PartyMessage(int fd, int party_id, int account_id, const char *mes, int len)
 {
 	return mapif->party_message(party_id,account_id,mes,len, fd);
 }
@@ -731,20 +764,20 @@ int mapif_parse_PartyLeaderChange(int fd, int party_id, int account_id, int char
 // Data packet length is set to inter.c that you
 // Do NOT go and check the packet length, RFIFOSKIP is done by the caller
 // Return :
-// 0 : error
-// 1 : ok
+//  0 : error
+//  1 : ok
 int inter_party_parse_frommap(int fd)
 {
 	RFIFOHEAD(fd);
 	switch(RFIFOW(fd,0)) {
-	case 0x3020: mapif->parse_CreateParty(fd, (char*)RFIFOP(fd,4), RFIFOB(fd,28), RFIFOB(fd,29), (struct party_member*)RFIFOP(fd,30)); break;
+	case 0x3020: mapif->parse_CreateParty(fd, RFIFOP(fd,4), RFIFOB(fd,28), RFIFOB(fd,29), RFIFOP(fd,30)); break;
 	case 0x3021: mapif->parse_PartyInfo(fd, RFIFOL(fd,2), RFIFOL(fd,6)); break;
-	case 0x3022: mapif->parse_PartyAddMember(fd, RFIFOL(fd,4), (struct party_member*)RFIFOP(fd,8)); break;
+	case 0x3022: mapif->parse_PartyAddMember(fd, RFIFOL(fd,4), RFIFOP(fd,8)); break;
 	case 0x3023: mapif->parse_PartyChangeOption(fd, RFIFOL(fd,2), RFIFOL(fd,6), RFIFOW(fd,10), RFIFOW(fd,12)); break;
 	case 0x3024: mapif->parse_PartyLeave(fd, RFIFOL(fd,2), RFIFOL(fd,6), RFIFOL(fd,10)); break;
 	case 0x3025: mapif->parse_PartyChangeMap(fd, RFIFOL(fd,2), RFIFOL(fd,6), RFIFOL(fd,10), RFIFOW(fd,14), RFIFOB(fd,16), RFIFOW(fd,17)); break;
 	case 0x3026: mapif->parse_BreakParty(fd, RFIFOL(fd,2)); break;
-	case 0x3027: mapif->parse_PartyMessage(fd, RFIFOL(fd,4), RFIFOL(fd,8), (char*)RFIFOP(fd,12), RFIFOW(fd,2)-12); break;
+	case 0x3027: mapif->parse_PartyMessage(fd, RFIFOL(fd,4), RFIFOL(fd,8), RFIFOP(fd,12), RFIFOW(fd,2)-12); break;
 	case 0x3029: mapif->parse_PartyLeaderChange(fd, RFIFOL(fd,2), RFIFOL(fd,6), RFIFOL(fd,10)); break;
 	default:
 		return 0;

@@ -1,18 +1,32 @@
-// Copyright (c) Hercules Dev Team, licensed under GNU GPL.
-// See the LICENSE file
-
+/**
+ * This file is part of Hercules.
+ * http://herc.ws - http://github.com/HerculesWS/Hercules
+ *
+ * Copyright (C) 2013-2015  Hercules Dev Team
+ *
+ * Hercules is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef MAP_CHANNEL_H
 #define MAP_CHANNEL_H
 
-#include <stdarg.h>
-
-#include "map.h"
-#include "../common/cbasetypes.h"
-#include "../common/db.h"
+#include "common/hercules.h"
+#include "common/mmo.h"
 
 /**
  * Declarations
  **/
+struct DBMap; // common/db.h
 struct map_session_data;
 struct guild;
 
@@ -51,7 +65,7 @@ struct Channel_Config {
 	char **colors_name;
 	unsigned char colors_count;
 	bool local, ally, irc;
-	bool local_autojoin, ally_autojoin;
+	bool local_autojoin, ally_autojoin, irc_autojoin;
 	char local_name[HCS_NAME_LENGTH], ally_name[HCS_NAME_LENGTH], irc_name[HCS_NAME_LENGTH];
 	unsigned char local_color, ally_color, irc_color;
 	bool closing;
@@ -69,8 +83,8 @@ struct channel_data {
 	char name[HCS_NAME_LENGTH];
 	char password[HCS_NAME_LENGTH];
 	unsigned char color;
-	DBMap *users;
-	DBMap *banned;
+	struct DBMap *users;
+	struct DBMap *banned;
 	unsigned int options;
 	unsigned int owner;
 	enum channel_types type;
@@ -80,7 +94,7 @@ struct channel_data {
 
 struct channel_interface {
 	/* vars */
-	DBMap *db;
+	struct DBMap *db;
 	struct Channel_Config *config;
 
 	int (*init) (bool minimal);
@@ -106,14 +120,15 @@ struct channel_interface {
 	void (*guild_join_alliance) (const struct guild *g_source, const struct guild *g_ally);
 	void (*guild_leave_alliance) (const struct guild *g_source, const struct guild *g_ally);
 	void (*quit_guild) (struct map_session_data *sd);
+	void (*irc_join) (struct map_session_data *sd);
 
 	void (*config_read) (void);
 };
 
-struct channel_interface *channel;
-
 #ifdef HERCULES_CORE
 void channel_defaults(void);
 #endif // HERCULES_CORE
+
+HPShared struct channel_interface *channel;
 
 #endif /* MAP_CHANNEL_H */

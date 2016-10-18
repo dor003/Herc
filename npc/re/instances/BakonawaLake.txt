@@ -1,23 +1,43 @@
-//===== Hercules Script ======================================
+//================= Hercules Script =======================================
+//=       _   _                     _
+//=      | | | |                   | |
+//=      | |_| | ___ _ __ ___ _   _| | ___  ___
+//=      |  _  |/ _ \ '__/ __| | | | |/ _ \/ __|
+//=      | | | |  __/ | | (__| |_| | |  __/\__ \
+//=      \_| |_/\___|_|  \___|\__,_|_|\___||___/
+//================= License ===============================================
+//= This file is part of Hercules.
+//= http://herc.ws - http://github.com/HerculesWS/Hercules
+//=
+//= Copyright (C) 2013-2015  Hercules Dev Team
+//= Copyright (C)  Euphy
+//=
+//= Hercules is free software: you can redistribute it and/or modify
+//= it under the terms of the GNU General Public License as published by
+//= the Free Software Foundation, either version 3 of the License, or
+//= (at your option) any later version.
+//=
+//= This program is distributed in the hope that it will be useful,
+//= but WITHOUT ANY WARRANTY; without even the implied warranty of
+//= MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//= GNU General Public License for more details.
+//=
+//= You should have received a copy of the GNU General Public License
+//= along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//=========================================================================
 //= Bakonawa Lake
-//===== By: ==================================================
-//= Euphy
-//===== Current Version: =====================================
-//= 1.1
-//===== Description: =========================================
-//= [Official Conversion]
+//================= Description ===========================================
 //= Defeat Bakonawa before he eats the moon.
 //= Part of the "Bakonawa Extermination" quest.
-//===== Additional Comments: =================================
-//= 1.0 First version. [Euphy]
-//= 1.1 Added GM management NPC. [Euphy]
-//============================================================
+//================= Current Version =======================================
+//= 1.1
+//=========================================================================
 
 1@ma_b	mapflag	src4instance
-//============================================================
+
 ma_scene01,174,179,4	script	Taho	4_M_DEWZATIMAN,{
 	disable_items;
-	if (checkweight(1201,1) == 0) {
+	if (checkweight(Knife,1) == 0) {
 		mes "You are carrying too many items. Come back after taking off some of them.";
 		close;
 	}
@@ -36,7 +56,7 @@ ma_scene01,174,179,4	script	Taho	4_M_DEWZATIMAN,{
 		close;
 	}
 
-	.@party_id = getcharid(1);
+	.@party_id = getcharid(CHAR_ID_PARTY);
 	.@md_name$ = "Bakonawa Lake";
 
 	.@baku_time = questprogress(12278,PLAYTIME);
@@ -49,16 +69,16 @@ ma_scene01,174,179,4	script	Taho	4_M_DEWZATIMAN,{
 		close;
 	}
 	if (!.@baku_time) {
-		if (getcharid(0) == getpartyleader(.@party_id,2)) {
+		if (getcharid(CHAR_ID_CHAR) == getpartyleader(.@party_id,2)) {
 			mes "[Taho]";
 			mes "Are you the leader of the Bakonawa slayers? The road is not well so we have to go down the cliff with a rope, is that OK?";
 			next;
-			.@i = select("Please weave a rope.:Now I will go down.:Cancel.");
+			.@i = select("Please weave a rope.", "Now I will go down.", "Cancel.");
 		} else {
 			mes "[Taho]";
 			mes "You came for slaying Bakonawa. The leader of your party has to help me weaving the rope for going down.";
 			next;
-			.@i = select(":Now I will go down.:Cancel.");
+			.@i = select("", "Now I will go down.", "Cancel.");
 		}
 		switch(.@i) {
 		case 1:
@@ -84,7 +104,7 @@ ma_scene01,174,179,4	script	Taho	4_M_DEWZATIMAN,{
 				mes "The party leader did not generate the dungeon yet.";
 				close;
 			} else {
-				mapannounce "ma_scene01","A party memeber, "+strcharinfo(0)+" of the party "+getpartyname(.@party_id)+" is entering the dungeon, "+.@md_name$+".",bc_map,"0x00ff99"; //FW_NORMAL 12 0 0
+				mapannounce "ma_scene01","A party member, "+strcharinfo(PC_NAME)+" of the party "+getpartyname(.@party_id)+" is entering the dungeon, "+.@md_name$+".",bc_map,"0x00ff99"; //FW_NORMAL 12 0 0
 				setquest 12278;
 				warp "1@ma_b",64,51;
 				end;
@@ -124,11 +144,11 @@ sec_in02,26,26,4	script	Bakonawa's Rage	4_M_DEWZATIMAN,{
 	mes "[Taho]";
 	mes "Bakonawa becomes invincible at some point. When that time comes, listen to my guides carefully. Just trust me and all will be good.";
 	next;
-	if (getcharid(0) == getpartyleader(getcharid(1),2)) {
+	if (getcharid(CHAR_ID_CHAR) == getpartyleader(getcharid(CHAR_ID_PARTY),2)) {
 		mes "[Taho]";
 		mes "Now I will make Bakonawa spring out from the lake.";
 		next;
-		switch(select("Hold on! I'm not ready yet!:Let's do it!")) {
+		switch(select("Hold on! I'm not ready yet!", "Let's do it!")) {
 		case 1:
 			mes "[Taho]";
 			mes "Oh... alright... tell me when you are ready.";
@@ -461,7 +481,7 @@ OnMobSpawn:
 
 1@ma_b,62,52,4	script	Taho#Completed	4_M_DEWZATIMAN,{
 	disable_items;
-	if (checkweight(1201,1) == 0) {
+	if (checkweight(Knife,1) == 0) {
 		mes "It seems you are carrying too many different kinds of items. Please try again after reducing it.";
 		close;
 	}
@@ -474,9 +494,9 @@ OnMobSpawn:
 		mes "[Taho]";
 		mes "This was found from Bakonawa's corpse. It would be better if you take this.";
 //		if (IsPremiumPcCafe == 10)
-			getitem 6499,7; //Ancient_Grudge
+			getitem Ancient_Grudge,7;
 //		else
-//			getitem 6499,5; //Ancient_Grudge
+//			getitem Ancient_Grudge,5;
 		getexp 0,100000;
 		next;
 	}
@@ -508,11 +528,11 @@ OnTimer10000:
 	mes "[Taho]";
 	mes "HMM. We almost got him but he is one fast creature...";
 	next;
-	if (getcharid(0) == getpartyleader(getcharid(1),2)) {
+	if (getcharid(CHAR_ID_CHAR) == getpartyleader(getcharid(CHAR_ID_PARTY),2)) {
 		mes "[Taho]";
 		mes "Are we going to try again?";
 		next;
-		switch(select("Hold on a sec!:Of couse! We cannot stand back now!")) {
+		switch(select("Hold on a sec!", "Of course! We cannot stand back now!")) {
 		case 1:
 			mes "[Taho]";
 			mes "AWW... I almost brought him out.";
