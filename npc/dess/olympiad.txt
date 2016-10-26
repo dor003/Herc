@@ -54,14 +54,14 @@ function	script	olympiad_arena_select	{
 	end;
 
 OnInit:
-	$@olympiad_pts_gain = 20; 						//кол-во птс, получаемых каждый период и при создании персонажа
-	$@olympiad_pts_div = 3; 						//делитель птс
-	$@olympiad_pts_max = 5;							//максимальное кол-во получаемых\снимаемых птс
-	$@olympiad_arena_count = 4;						//количество арен
-	$@olympiad_battle_count = 30;					//количество возможных боев в день
-	$@olympiad_start_count = 4;						//кол-во участников, необходимых для запуска боев
-	$@olympiad_move_time = 30;						//время перед перемещением на арену
-	$@olympiad_prepare_time = 60;					//время на подготовку перед боем
+	$@olympiad_pts_gain = 20; 						// РєРѕР»-РІРѕ РїС‚СЃ, РїРѕР»СѓС‡Р°РµРјС‹С… РєР°Р¶РґС‹Р№ РїРµСЂРёРѕРґ Рё РїСЂРё СЃРѕР·РґР°РЅРёРё РїРµСЂСЃРѕРЅР°Р¶Р°
+	$@olympiad_pts_div = 3; 						// РґРµР»РёС‚РµР»СЊ РїС‚СЃ
+	$@olympiad_pts_max = 5;							// РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ РєРѕР»-РІРѕ РїРѕР»СѓС‡Р°РµРјС‹С…\СЃРЅРёРјР°РµРјС‹С… РїС‚СЃ
+	$@olympiad_arena_count = 4;						// РєРѕР»РёС‡РµСЃС‚РІРѕ Р°СЂРµРЅ
+	$@olympiad_battle_count = 30;					// РєРѕР»РёС‡РµСЃС‚РІРѕ РІРѕР·РјРѕР¶РЅС‹С… Р±РѕРµРІ РІ РґРµРЅСЊ
+	$@olympiad_start_count = 4;						// РєРѕР»-РІРѕ СѓС‡Р°СЃС‚РЅРёРєРѕРІ, РЅРµРѕР±С…РѕРґРёРјС‹С… РґР»СЏ Р·Р°РїСѓСЃРєР° Р±РѕРµРІ
+	$@olympiad_move_time = 30;						// РІСЂРµРјСЏ РїРµСЂРµРґ РїРµСЂРµРјРµС‰РµРЅРёРµРј РЅР° Р°СЂРµРЅСѓ
+	$@olympiad_prepare_time = 60;					// РІСЂРµРјСЏ РЅР° РїРѕРґРіРѕС‚РѕРІРєСѓ РїРµСЂРµРґ Р±РѕРµРј
 
 	$@olympiad_arena_1_state = 0; 
 	$@olympiad_arena_2_state = 0; 
@@ -170,11 +170,11 @@ OnClock0610:
 	end;
 
 OnClock1800:
-	announce " - Sharpen your swords, tighten the stitchings in your armor, and make haste to a Grand Olympiad Manager!  Battles in the Grand Olympiad Games are now taking place! - ", bc_all;
+	announce " - Sharpen your swords, tighten the stitchings in your armor, and make haste to a Grand Olympiad Manager! Battles in the Grand Olympiad Games are now taking place! - ", bc_all;
 	end;
 	
 OnClock0000:
-	announce " - Much carnage has been left for the cleanup crew of the Olympiad Stadium.  Battles in the Grand Olympiad Games are now over! - ", bc_all;
+	announce " - Much carnage has been left for the cleanup crew of the Olympiad Stadium. Battles in the Grand Olympiad Games are now over! - ", bc_all;
 	end;
 
 OnMinute00:
@@ -210,7 +210,7 @@ OnOlympiadStat:
 
 -	script	olympiad_manager	-1,{
 	mes "[" + strnpcinfo(1) + "]";
-	mes "фыв";
+	mes "С„С‹РІ";
 	next;
 	switch (select("View informtaion about Grand Olympiad:Enter queue:Leave queue:Spectate:Olympiad Quests:Receive a reward for previous period:Characters ratings in previous period")) {
 		case 1: // View informtaion about Grand Olympiad
@@ -226,7 +226,7 @@ OnOlympiadStat:
 			mes "4)Opponents with the same points.";
 			next;
 			mes "^FF0000Grand Olympiad:^000000";
-			mes "1)If you’ve registered, you’ll get a message 2 minutes before it starts.";
+			mes "1)If youвЂ™ve registered, youвЂ™ll get a message 2 minutes before it starts.";
 			mes "2)After 2 minutes the opponents are teleported to one of four possible stadiums (random).";
 			next;
 			mes "^FF0000Grand Olympiad:^000000";
@@ -234,7 +234,7 @@ OnOlympiadStat:
 			mes "2)You can choose from 5 buffs available.";
 			next;
 			mes "^FF0000Grand Olympiad:^000000";
-			mes "1)When a character is teleported to arena НР, МР are fully restored.";
+			mes "1)When a character is teleported to arena РќР , РњР  are fully restored.";
 			mes "2)Characters keep their summoned servitors when teleported to arena.";
 			next;
 			mes "^FF0000Grand Olympiad:^000000";
@@ -327,7 +327,7 @@ OnOlympiadStat:
 							if (getcharid(2))
 								addguildrep(getcharid(2), 20);
 								
-							// награда за 10 побед.
+							// РЅР°РіСЂР°РґР° Р·Р° 10 РїРѕР±РµРґ.
 						}
 						else {
 							mes "[" + strnpcinfo(1) + "]";
@@ -347,7 +347,7 @@ OnOlympiadStat:
 									if (getcharid(2))
 										addguildrep(getcharid(2), 10);
 										
-									// награда за 5 побед.
+									// РЅР°РіСЂР°РґР° Р·Р° 5 РїРѕР±РµРґ.
 								}
 							}
 							else if (.@wins_count >= 2) {
@@ -363,7 +363,7 @@ OnOlympiadStat:
 									if (getcharid(2))
 										addguildrep(getcharid(2), 5);
 										
-									// награда за 2 победы.
+									// РЅР°РіСЂР°РґР° Р·Р° 2 РїРѕР±РµРґС‹.
 								}
 							}
 							else {
@@ -410,7 +410,7 @@ OnOlympiadStat:
 							if (getcharid(2))
 								addguildrep(getcharid(2), 20);
 								
-							// награда за 10 боёв.
+							// РЅР°РіСЂР°РґР° Р·Р° 10 Р±РѕС‘РІ.
 						}
 						else {
 							mes "[" + strnpcinfo(1) + "]";
@@ -430,7 +430,7 @@ OnOlympiadStat:
 									if (getcharid(2))
 										addguildrep(getcharid(2), 10);
 										
-									// награда за 5 боёв.
+									// РЅР°РіСЂР°РґР° Р·Р° 5 Р±РѕС‘РІ.
 								}
 							}
 							else if (.@battle_count >= 2) {
@@ -446,7 +446,7 @@ OnOlympiadStat:
 									if (getcharid(2))
 										addguildrep(getcharid(2), 5);
 										
-									// награда за 2 боя.
+									// РЅР°РіСЂР°РґР° Р·Р° 2 Р±РѕСЏ.
 								}
 							}
 							else {
@@ -498,29 +498,29 @@ OnOlympiadStat:
 			}
 			
 			if (.@place == 1) { // Hero
-				// салютик
+				// СЃР°Р»СЋС‚РёРє
 				
 				olympiad_sethero();
 				
-				// награда за 1 место
+				// РЅР°РіСЂР°РґР° Р·Р° 1 РјРµСЃС‚Рѕ
 				
 				mes "[" + strnpcinfo(1) + "]";
 				mes "Glory to the heroes!";
 			}
 			else if (.@place <= 3) {
-				// награда за 2-3 место
+				// РЅР°РіСЂР°РґР° Р·Р° 2-3 РјРµСЃС‚Рѕ
 			
 				mes "[" + strnpcinfo(1) + "]";
 				mes "Well done!";
 			}
 			else if (.@place <= 10) {
-				// награда за 4-10 место
+				// РЅР°РіСЂР°РґР° Р·Р° 4-10 РјРµСЃС‚Рѕ
 			
 				mes "[" + strnpcinfo(1) + "]";
 				mes "Well done!";
 			}
 			else {
-				// награда за 10+ места
+				// РЅР°РіСЂР°РґР° Р·Р° 10+ РјРµСЃС‚Р°
 				
 				mes "[" + strnpcinfo(1) + "]";
 				mes "Thank you!";
@@ -583,13 +583,13 @@ OnPrepare:
 	.@char_id[0] = getd("$@olympiad_arena_" + .@arena_id + "_char_id[0]");
 	.@char_id[1] = getd("$@olympiad_arena_" + .@arena_id + "_char_id[1]");
 
-	// Ожидание боя
+	// РћР¶РёРґР°РЅРёРµ Р±РѕСЏ
 	setd("$@olympiad_arena_" + .@arena_id + "_state", 1);
 	
 	for (.@i = $@olympiad_move_time; .@i > 0; .@i--) {
 		if (!ischaronline(.@char_id[0]) && ischaronline(.@char_id[1])) {
 			mes2charid("Your opponent made haste with their tail between their legs; the match has been cancelled.", .@char_id[1]);
-			//снять птс у 0 игрока
+			//СЃРЅСЏС‚СЊ РїС‚СЃ Сѓ 0 РёРіСЂРѕРєР°
 			olympiad_set_pts((olympiad_get_pts(.@char_id[0]) / $@olympiad_pts_div * -1), .@char_id[0]);
 			setd("$@olympiad_arena_" + .@arena_id + "_char[0]", 0);
 			setd("$@olympiad_arena_" + .@arena_id + "_char[1]", 0);
@@ -597,14 +597,14 @@ OnPrepare:
 		}
 		else if (!ischaronline(.@char_id[1]) && ischaronline(.@char_id[0])) {
 			mes2charid("Your opponent made haste with their tail between their legs; the match has been cancelled.", .@char_id[0]);
-			//снять птс у 1 игрока
+			//СЃРЅСЏС‚СЊ РїС‚СЃ Сѓ 1 РёРіСЂРѕРєР°
 			olympiad_set_pts((olympiad_get_pts(.@char_id[1]) / $@olympiad_pts_div * -1), .@char_id[1]);
 			setd("$@olympiad_arena_" + .@arena_id + "_char[0]", 0);
 			setd("$@olympiad_arena_" + .@arena_id + "_char[1]", 0);
 			end;
 		}
 		else if (!ischaronline(.@char_id[0]) && !ischaronline(.@char_id[1])) {
-			//снять птс у обоих
+			//СЃРЅСЏС‚СЊ РїС‚СЃ Сѓ РѕР±РѕРёС…
 			olympiad_set_pts((olympiad_get_pts(.@char_id[0]) / $@olympiad_pts_div * -1), .@char_id[0]);
 			olympiad_set_pts((olympiad_get_pts(.@char_id[1]) / $@olympiad_pts_div * -1), .@char_id[1]);
 			setd("$@olympiad_arena_" + .@arena_id + "_char[0]", 0);
@@ -623,7 +623,7 @@ OnPrepare:
 	warpchar("arena_" + .@arena_id, 101, 143, .@char_id[0]);
 	warpchar("arena_" + .@arena_id, 101, 44, .@char_id[1]);
 
-	// Подготовка к бою
+	// РџРѕРґРіРѕС‚РѕРІРєР° Рє Р±РѕСЋ
 	setd("$@olympiad_arena_" + .@arena_id + "_state", 2);
 		
 	setwall(strnpcinfo(4),98,119,8,6,0,"olympiad_wall_" + .@arena_id + "1");
@@ -750,7 +750,7 @@ OnBattleEnd:
 	if (ischaronline(.@char_id[1]))
 		mes2charid("Damage inflicted: " + olympiad_getdamage(.@char_id[1]) + ". Damage received: " + olympiad_getdamage(.@char_id[0]) + ".", .@char_id[1]);
 
-	if (.@draw) { //ничья
+	if (.@draw) { //РЅРёС‡СЊСЏ
 		mapannounce strnpcinfo(4), "There is no victor; the match ends in a tie.", bc_map|bc_npc, 0xffff00;
 		
 		.@char_pts[0] = olympiad_get_pts(.@char_id[0]);
